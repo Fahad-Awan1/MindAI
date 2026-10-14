@@ -2,7 +2,6 @@ import { StudyActivity, StudySet } from '../types';
 
 export type QuizQuestionType =
   | 'mcq' | 'multi_select' | 'true_false' | 'fill_blank' | 'matching' | 'ordering' | 'numeric' | 'short_answer';
-export type ExamQuestionType = 'mcq' | 'short' | 'long';
 export type QuestionType = QuizQuestionType | 'short' | 'long';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type DifficultySetting = Difficulty | 'mixed';

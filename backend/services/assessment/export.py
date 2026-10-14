@@ -126,7 +126,6 @@ def _plain_answer(q: Dict) -> str:
 
 def to_docx(kind: str, sections: List[Dict], questions: List[Dict], meta: Dict, include_key: bool) -> bytes:
     from docx import Document as DocxDocument
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt
 
     doc = DocxDocument()

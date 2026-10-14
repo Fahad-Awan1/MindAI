@@ -31,9 +31,9 @@ An AI-powered study companion built with **Python FastAPI** backend and **React*
 - 👥 **Study Rooms** - Real-time rooms with classmates: live chat, presence and typing indicators, shared documents,
   an **@MindAI** moderator that answers the group with citations, and live **Quiz Battles** with a leaderboard
 
-- 🎓 **AI Study Group** - A seminar with AI classmates (Maya the Explainer, Leo the Skeptic, Zoe the Curious Beginner,
-  Omar the Devil's Advocate) who debate your documents with citations and pull you in; ends with a summary and feedback
-  on your contributions. The same classmates can be `@mentioned` inside Study Rooms.
+- 🎓 **AI tutor personalities** - In AI Chat, choose who answers: MindAI, Maya the Explainer, Leo the Skeptic,
+  Zoe the Curious Beginner or Omar the Devil's Advocate - each with its own teaching style, always citing your documents.
+  The same personalities can be `@mentioned` inside Study Rooms.
 
 - 🎙️ **Lecture-to-Notes** - Upload a lecture recording (audio or video), or paste a YouTube or web-article link:
   MindAI transcribes it (Whisper; YouTube captions when available), writes timestamped notes plus an overview, and

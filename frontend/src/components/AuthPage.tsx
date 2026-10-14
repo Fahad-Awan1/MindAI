@@ -50,7 +50,7 @@ const FEATURES = [
   { icon: Share2, text: 'Concept graphs' },
   { icon: Users, text: 'Live study rooms' },
   { icon: BookOpen, text: 'Smart reader' },
-  { icon: Brain, text: 'AI study group' },
+  { icon: Brain, text: 'AI tutor personalities' },
 ];
 
 const ROTATING = ['notes.', 'lectures.', 'slides.', 'textbooks.'];

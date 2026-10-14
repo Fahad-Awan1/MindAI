@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Document, StudySet, User
+from models import StudySet, User
 from schemas import (
     ActivityResponse,
     ExamAttemptRequest,

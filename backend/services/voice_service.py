@@ -10,7 +10,7 @@ import io
 import re
 import time
 import wave
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from groq import AsyncGroq
 

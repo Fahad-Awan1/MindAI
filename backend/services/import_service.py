@@ -10,7 +10,6 @@ citations point at timestamps.
 """
 import asyncio
 import glob
-import json
 import math
 import os
 import re
@@ -29,7 +28,6 @@ from groq import AsyncGroq
 from config import get_settings
 from database import SessionLocal
 from models import Document, ImportJob
-from services.document_service import segments_to_text
 from services.groq_service import AIServiceError, _complete, _extract_list, _parse_json, _str_list, generate_summary
 from services.indexing import index_segments
 from services.document_service import extract_segments

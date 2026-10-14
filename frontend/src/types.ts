@@ -89,11 +89,6 @@ export enum AppView {
   // (The separate AI Study Group screen was folded into AI Chat's personalities)
 }
 
-export interface AnalysisState {
-  isLoading: boolean;
-  error: string | null;
-}
-
 export type StudySetKind = 'quiz' | 'flashcards' | 'study_plan' | 'exam' | 'mind_map' | 'teach_back' | 'audio_overview' | 'study_group';
 export type ActivityKind = 'quiz' | 'flashcards' | 'exam' | 'teach_back' | 'study_group';
 

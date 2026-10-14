@@ -5,23 +5,20 @@ Each persona has its own personality. Every turn, two classmates speak (the firs
 the student or the last speaker, the second reacts), they cite the student's documents,
 and they regularly hand the floor back to the student.
 """
-import json
 import time
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List
 
 from fastapi.concurrency import run_in_threadpool
 
 from services.groq_service import (
     AIServiceError,
     _complete,
-    _extract_list,
     _parse_json,
     _str_list,
     _to_int,
-    normalize_citations,
     stream_completion,
 )
-from services.rag_service import format_sources, rag_service
+from services.rag_service import rag_service
 
 PERSONAS: Dict[str, Dict[str, str]] = {
     "explainer": {

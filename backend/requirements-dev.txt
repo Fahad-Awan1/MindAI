@@ -1,0 +1,4 @@
+# Development tools (lint + tests): pip install -r requirements-dev.txt
+-r requirements.txt
+ruff==0.12.12
+pytest==8.4.2

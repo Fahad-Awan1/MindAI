@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { authHeaders, getToken, notifyUnauthorized, setToken } from './authToken';
 import {
-  AnswerValue, AttemptHistoryItem, AttemptResult, ExamStreamRequest, GenerationEvent, ItemResult, Question,
+  AnswerValue, AttemptResult, ExamStreamRequest, GenerationEvent, ItemResult, Question,
   QuizMode, QuizQuestionType, QuizStreamRequest, ResponseItem, DifficultySetting, ExamAttempt, MarkingEvent, QuestionMark,
 } from '../assessment/types';
-import { DocumentFile, ChatMessage, ChatResponse, Flashcard, QuizQuestion, StudyTask, ExamPaper, StudySet, StudySetKind, StudySetSummary, StudyActivity, Progress, CardSchedule, DueQueue, ReviewRating, TopicStat, TeachBackData, ExamGrade, Source, DocumentSegment, AudioOverviewData, ConceptGraph, RoomSummary, RoomDetail, RoomMessage, InvitePreview, Persona, StudyGroupData, ImportJob } from '../types';
+import { DocumentFile, ChatMessage, Flashcard, QuizQuestion, StudyTask, StudySet, StudySetKind, StudySetSummary, StudyActivity, Progress, CardSchedule, DueQueue, ReviewRating, TopicStat, TeachBackData, Source, DocumentSegment, AudioOverviewData, ConceptGraph, RoomSummary, RoomDetail, RoomMessage, InvitePreview, Persona, ImportJob } from '../types';
 import { saveFile } from './platform';
 
 // Same origin by default: the Vite dev server proxies /api (and WebSockets) to the backend.
@@ -157,11 +157,6 @@ export const documentsAPI = {
     return response.data;
   },
 
-  getById: async (id: string): Promise<DocumentFile> => {
-    const response = await api.get(`/api/documents/${id}`);
-    return response.data;
-  },
-
   delete: async (id: string) => {
     const response = await api.delete(`/api/documents/${id}`);
     return response.data;
@@ -207,23 +202,6 @@ export const chatAPI = {
   streamKnowledgeBase: (message: string, history: ChatHistoryItem[], options: StreamOptions, persona?: string | null) =>
     streamChat('/api/chat/knowledge-base/stream', { message, history, persona: persona || null }, options),
 
-  chatWithDocument: async (documentId: string, message: string, history: ChatHistoryItem[]): Promise<ChatResponse> => {
-    const response = await api.post('/api/chat/document', {
-      document_id: documentId,
-      message,
-      history,
-    });
-    return response.data;
-  },
-
-  chatWithKnowledgeBase: async (message: string, history: ChatHistoryItem[]): Promise<ChatResponse> => {
-    const response = await api.post('/api/chat/knowledge-base', {
-      message,
-      history,
-    });
-    return response.data;
-  },
-
   getHistory: async (documentId: string): Promise<ChatMessage[]> => {
     const response = await api.get(`/api/chat/history/${documentId}`);
     return response.data;
@@ -245,15 +223,6 @@ export const aiAPI = {
     return response.data;
   },
 
-  generateQuiz: async (documentId: string, count: number = 5, focusWeakTopics: boolean = false): Promise<StudySet<QuizQuestion[]>> => {
-    const response = await api.post('/api/ai/quiz', {
-      document_id: documentId,
-      count,
-      focus_weak_topics: focusWeakTopics,
-    });
-    return response.data;
-  },
-
   generateStudyPlan: async (documentId: string, days: number = 5): Promise<StudySet<StudyTask[]>> => {
     const response = await api.post('/api/ai/study-plan', {
       document_id: documentId,
@@ -269,15 +238,6 @@ export const aiAPI = {
     return response.data;
   },
 
-  generateExamPaper: async (documentId: string, numQuestions: number, difficulty: string, type: string): Promise<StudySet<ExamPaper>> => {
-    const response = await api.post('/api/ai/exam-paper', {
-      document_id: documentId,
-      num_questions: numQuestions,
-      difficulty,
-      type
-    });
-    return response.data;
-  }
 };
 
 // Saved study sets & attempts
@@ -294,33 +254,13 @@ export const studySetsAPI = {
     return response.data;
   },
 
-  rename: async (id: string, title: string): Promise<StudySetSummary> => {
-    const response = await api.patch(`/api/study-sets/${id}`, { title });
-    return response.data;
-  },
-
   delete: async (id: string) => {
     const response = await api.delete(`/api/study-sets/${id}`);
     return response.data;
   },
 
-  submitQuizAttempt: async (id: string, answers: number[]): Promise<StudyActivity> => {
-    const response = await api.post(`/api/study-sets/${id}/quiz-attempts`, { answers });
-    return response.data;
-  },
-
-  submitFlashcardSession: async (id: string, results: boolean[]): Promise<StudyActivity> => {
-    const response = await api.post(`/api/study-sets/${id}/flashcard-sessions`, { results });
-    return response.data;
-  },
-
   getSchedule: async (id: string): Promise<CardSchedule[]> => {
     const response = await api.get(`/api/study-sets/${id}/schedule`);
-    return response.data;
-  },
-
-  submitExamAttempt: async (id: string, answers: string[]): Promise<ExamGrade> => {
-    const response = await api.post(`/api/study-sets/${id}/exam-attempts`, { answers });
     return response.data;
   },
 
@@ -580,15 +520,6 @@ export const streamEvents = async (
 export const studyGroupAPI = {
   personas: async (): Promise<Persona[]> => (await api.get('/api/study-group/personas')).data,
 
-  create: async (topic: string, documentIds: string[], personas: string[]): Promise<StudySet<StudyGroupData>> =>
-    (await api.post('/api/study-group/sessions', { topic, document_ids: documentIds, personas })).data,
-
-  /** Speak (optional message) and stream the classmates' replies */
-  turn: (setId: string, message: string | undefined, onEvent: (event: any) => void, signal?: AbortSignal) =>
-    streamEvents(`/api/study-group/${setId}/turn`, message ? { message } : {}, onEvent, signal),
-
-  end: async (setId: string): Promise<StudySet<StudyGroupData>> =>
-    (await api.post(`/api/study-group/${setId}/end`)).data,
 };
 
 // Lecture-to-Notes: recordings, YouTube videos and web articles become documents
@@ -600,7 +531,6 @@ export const importsAPI = {
   },
   importUrl: async (url: string): Promise<ImportJob> => (await api.post('/api/imports/url', { url })).data,
   list: async (): Promise<ImportJob[]> => (await api.get('/api/imports')).data,
-  get: async (id: string): Promise<ImportJob> => (await api.get(`/api/imports/${id}`)).data,
   dismiss: async (id: string) => (await api.delete(`/api/imports/${id}`)).data,
 };
 
@@ -639,9 +569,6 @@ export const assessmentAPI = {
 
   check: async (setId: string, qid: string, answer: AnswerValue): Promise<ItemResult> =>
     (await api.post('/api/assessment/check', { set_id: setId, qid, answer })).data,
-
-  attempts: async (setId: string): Promise<AttemptHistoryItem[]> =>
-    (await api.get(`/api/assessment/sets/${setId}/attempts`)).data,
 
   streamVariant: (setId: string, qids: string[], onEvent: (event: GenerationEvent) => void, signal?: AbortSignal) =>
     streamEvents(`/api/assessment/sets/${setId}/variant/stream`, { qids }, onEvent, signal),

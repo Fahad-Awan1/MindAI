@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from config import get_settings, BASE_DIR
 from database import get_db
-from models import Document, StudySet, User
+from models import StudySet, User
 from schemas import StudySetResponse
 from services.document_service import resolve_stored_path, delete_file
 from services.groq_service import AIServiceError, generate_podcast_script

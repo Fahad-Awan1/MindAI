@@ -1,0 +1,6 @@
+# Backend lint: pyflakes errors (undefined names, unused imports/variables) and syntax errors.
+# Run from backend/:  venv\Scripts\python.exe -m ruff check .
+extend-exclude = ["venv", "venv_old", "chroma_db", "chroma_db_backup", "uploads"]
+
+[lint]
+select = ["F", "E9"]

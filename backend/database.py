@@ -34,7 +34,7 @@ def get_db():
 
 def init_db():
     """Initialize database tables and add columns introduced after a table was created."""
-    import models  # Import models to register them
+    import models  # noqa: F401 - imported to register the tables
     Base.metadata.create_all(bind=engine)
     _add_missing_columns()
 

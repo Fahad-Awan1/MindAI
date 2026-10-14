@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import ChallengeAttempt, QuestionBankItem, Room, RoomChallenge, RoomMember, StudySet, User
 from services.assessment import bank
-from services.assessment.export import FORMATS, export_set
+from services.assessment.export import FORMATS, content_disposition, export_set
 from services.assessment.schema import new_id, upgrade_quiz
 from services.auth_service import get_current_user, get_user_document
 from services.groq_service import AIServiceError
@@ -155,7 +155,7 @@ async def past_paper_blueprint(request: PastPaperRequest, user: User = Depends(g
     if len(text) < 200:
         raise HTTPException(status_code=422, detail="That document doesn't look like an exam paper (too little text).")
     from services.assessment.budget import budget, estimate_tokens
-    from services.groq_service import _extract_list, _parse_json, complete_with_usage
+    from services.groq_service import _parse_json, complete_with_usage
     prompt = (
         "This is a past exam paper. Describe its STRUCTURE so a new paper can be written in the same format.\n"
         'Return JSON: {"title_style": "...", "duration_minutes": n, "sections": [{"kind": "objective|short|long", "count": n, '
