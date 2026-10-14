@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.concurrency import run_in_threadpool
+import asyncio
 from sqlalchemy.orm import Session
 from typing import List
 import os
 import time
 import uuid
-from database import get_db
+from database import get_db, SessionLocal
 from models import Document, User
 from schemas import DocumentResponse
 from services.document_service import process_document, delete_file, get_file_base64, extract_segments, document_segments
@@ -16,6 +17,27 @@ from services.groq_service import generate_summary
 from services.auth_service import get_current_user, get_user_document
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+PENDING_SUMMARY = "Generating summary..."
+# Background summary tasks are kept referenced so they aren't garbage-collected mid-run
+_summary_tasks: set = set()
+
+
+async def _summarize_later(document_id: str, text: str) -> None:
+    """Write the document's AI summary once it is ready (the upload has already returned)."""
+    try:
+        summary = await generate_summary(text)
+    except Exception as e:
+        print(f"Error generating summary: {e}")
+        summary = "Summary generation failed."
+    db = SessionLocal()
+    try:
+        document = db.query(Document).filter(Document.id == document_id).first()
+        if document:
+            document.summary = summary
+            db.commit()
+    finally:
+        db.close()
 
 # Supported file extensions mapped to document types
 SUPPORTED_TYPES = {
@@ -67,7 +89,7 @@ async def upload_document(
     3. Process content using `process_document` (extract text, save local copy).
     4. Create a database record for the document.
     5. Add the document to the RAG vector database.
-    6. Generate a summary using the LLM.
+    6. Start the LLM summary in the background (the client polls until it appears).
     7. Return the document metadata and content to the client.
     """
     filename = file.filename or ""
@@ -103,7 +125,7 @@ async def upload_document(
             mime_type=file.content_type if file_type not in ['text', 'markdown'] else None,
             type=file_type,
             created_at=now_ms,
-            summary="Generating summary..."
+            summary=PENDING_SUMMARY
         )
 
         db.add(document)
@@ -129,14 +151,16 @@ async def upload_document(
         except Exception as e:
             print(f"Error adding to RAG: {e}")
 
-    # Generate summary
-    try:
-        document.summary = await generate_summary(text_content)
-    except Exception as e:
-        print(f"Error generating summary: {e}")
-        document.summary = "Summary generation failed."
-    db.commit()
-    db.refresh(document)
+    # The AI summary can take a while; generate it in the background so the upload returns quickly
+    # (slow responses time out behind proxies such as the Cloudflare tunnel, and a retry would duplicate the document)
+    if text_content:
+        task = asyncio.create_task(_summarize_later(document.id, text_content))
+        _summary_tasks.add(task)
+        task.add_done_callback(_summary_tasks.discard)
+    else:
+        document.summary = "No text found to summarise."
+        db.commit()
+        db.refresh(document)
 
     return to_response(document)
 

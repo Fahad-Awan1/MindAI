@@ -342,6 +342,14 @@ def list_messages(
 # WebSocket: chat, typing, presence, AI moderator, quiz battles
 # ---------------------------------------------------------------------------
 
+def _int(value, default: int) -> int:
+    """A number from a client message (bad values fall back instead of dropping the connection)."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @router.websocket("/{room_id}/ws")
 async def room_socket(websocket: WebSocket, room_id: str, token: str = ""):
     """
@@ -412,7 +420,7 @@ async def room_socket(websocket: WebSocket, room_id: str, token: str = ""):
                     asyncio.create_task(run_ai_answer(room_id, question, user_name))
 
             elif kind == "quiz_start":
-                count = min(max(int(event.get("count") or 5), 3), 10)
+                count = min(max(_int(event.get("count"), 5), 3), 10)
                 db = SessionLocal()
                 try:
                     starter = db.query(User).filter(User.id == user_id).first()
@@ -435,7 +443,7 @@ async def room_socket(websocket: WebSocket, room_id: str, token: str = ""):
                     answering = db.query(User).filter(User.id == user_id).first()
                 finally:
                     db.close()
-                error = battle.submit(answering, int(event.get("index", -1)), int(event.get("option", -1)))
+                error = battle.submit(answering, _int(event.get("index"), -1), _int(event.get("option"), -1))
                 if error:
                     await manager.send(websocket, {"type": "quiz_error", "detail": error})
                 else:

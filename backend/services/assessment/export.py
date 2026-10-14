@@ -9,6 +9,7 @@ import io
 import json
 import random
 import re
+from urllib.parse import quote
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Tuple
 
@@ -507,3 +508,13 @@ def export_set(study_set, fmt: str, version: str = "A", include_key: bool = True
     media, ext = FORMATS[fmt]
     base = re.sub(r"[^\w\- ]+", "", meta["title"]).strip().replace(" ", "_")[:60] or "mindai"
     return content, media, f"{base}.{ext}"
+
+
+def content_disposition(filename: str) -> str:
+    """An attachment header that survives any title: an ASCII fallback name plus the real (UTF-8) one."""
+    # Longest known extension first, so "gift.txt" and "kahoot.csv" stay whole
+    ext = max((e for _, e in FORMATS.values() if filename.endswith("." + e)), key=len, default="")
+    stem = filename[: -(len(ext) + 1)] if ext else filename
+    ascii_stem = re.sub(r"[^A-Za-z0-9_\-]+", "", stem.encode("ascii", "ignore").decode()).strip("_-") or "mindai"
+    ascii_name = f"{ascii_stem}.{ext}" if ext else ascii_stem
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"

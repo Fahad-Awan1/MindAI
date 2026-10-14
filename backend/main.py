@@ -8,6 +8,9 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
+import logging
+import re
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
@@ -15,6 +18,20 @@ from config import get_settings
 from routers import auth, documents, chat, ai_features, study_sets, tutor, voice, audio, graph, rooms, study_group, imports, assessment, exams, bank
 
 settings = get_settings()
+
+
+class _RedactTokens(logging.Filter):
+    """Study-room WebSockets carry the login token in the URL; keep it out of the access log."""
+    _token = re.compile(r"(token=)[^&\s\"']+")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.args:
+            record.args = tuple(self._token.sub(r"\1[hidden]", a) if isinstance(a, str) else a for a in record.args)
+        return True
+
+
+for _name in ("uvicorn.access", "uvicorn.error"):
+    logging.getLogger(_name).addFilter(_RedactTokens())
 
 
 @asynccontextmanager
@@ -62,6 +79,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # The app (a different origin) needs the export's file name from this header
+    expose_headers=["Content-Disposition"],
 )
 
 # Include routers

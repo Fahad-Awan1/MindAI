@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ImportJob } from '../types';
-import { importsAPI, getErrorMessage } from '../services/api';
+import { importsAPI, getErrorMessage, API_BASE_URL } from '../services/api';
 import { Reveal } from '../motion';
 import { Mic, Link2, Loader2, CheckCircle2, AlertCircle, X, Youtube, Globe, FileAudio, Upload, ArrowRight } from 'lucide-react';
 
@@ -14,6 +14,19 @@ interface ImportPanelProps {
 
 export const MEDIA_EXTENSIONS = ['.mp3', '.m4a', '.wav', '.ogg', '.oga', '.opus', '.flac', '.aac', '.webm', '.mp4', '.mov', '.mkv', '.m4v', '.avi', '.mpeg', '.mpga'];
 export const isMediaFile = (name: string) => MEDIA_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
+
+const MB = 1024 * 1024;
+/**
+ * Largest recording that can be sent. The server accepts 500 MB, but when the app talks to it through a
+ * public proxy / tunnel (VITE_API_URL set, e.g. Cloudflare) uploads over ~100 MB are cut off with an HTML error.
+ */
+export const MAX_RECORDING_BYTES = API_BASE_URL ? 95 * MB : 500 * MB;
+
+/** A clear message when a recording is too big to upload, otherwise null. */
+export const recordingTooLarge = (file: File): string | null =>
+  file.size > MAX_RECORDING_BYTES
+    ? `"${file.name}" is ${Math.round(file.size / MB)} MB - the limit here is ${Math.round(MAX_RECORDING_BYTES / MB)} MB. Trim or compress the recording (an audio-only file is much smaller).`
+    : null;
 
 const POLL_MS = 2000;
 
@@ -60,6 +73,11 @@ export const ImportPanel: React.FC<ImportPanelProps> = ({ onImported, onOpenDocu
     const media = Array.from(files).filter(f => isMediaFile(f.name));
     if (!media.length) {
       setError('Choose an audio or video recording (MP3, M4A, WAV, MP4, WEBM, MOV...).');
+      return;
+    }
+    const tooLarge = media.map(recordingTooLarge).find(Boolean);
+    if (tooLarge) {
+      setError(tooLarge);
       return;
     }
     setBusy(true);
@@ -146,7 +164,7 @@ export const ImportPanel: React.FC<ImportPanelProps> = ({ onImported, onOpenDocu
           </div>
           <div className="text-center sm:text-left">
             <p className="font-semibold text-slate-800">{busy ? 'Uploading...' : 'Drop a lecture recording or click to choose'}</p>
-            <p className="text-xs text-slate-400">Audio or video up to 500 MB: MP3, M4A, WAV, MP4, WEBM, MOV. Transcribed with Whisper.</p>
+            <p className="text-xs text-slate-400">Audio or video up to {Math.round(MAX_RECORDING_BYTES / (1024 * 1024))} MB: MP3, M4A, WAV, MP4, WEBM, MOV. Transcribed with Whisper.</p>
           </div>
         </div>
       ) : (

@@ -95,20 +95,34 @@ def get_current_user(
     return user
 
 
-def check_login_rate(request: Request, email: str) -> None:
-    """Slow down password guessing: at most N attempts per minute per email + client IP."""
-    key = f"{normalize_email(email)}|{request.client.host if request.client else ''}"
-    attempts = _login_attempts[key]
+def client_ip(request: Request) -> str:
+    """The real client address. Behind the dev proxy / Cloudflare tunnel every request comes from 127.0.0.1,
+    so trust the forwarding headers only when the direct peer is local (our own proxy)."""
+    peer = request.client.host if request.client else ""
+    if peer in ("127.0.0.1", "::1", "localhost"):
+        forwarded = request.headers.get("cf-connecting-ip") or request.headers.get("x-forwarded-for", "").split(",")[0]
+        if forwarded.strip():
+            return forwarded.strip()
+    return peer
+
+
+def _rate_key(request: Request, email: str, purpose: str) -> str:
+    return f"{purpose}|{normalize_email(email)}|{client_ip(request)}"
+
+
+def check_login_rate(request: Request, email: str, purpose: str = "login") -> None:
+    """Slow down guessing: at most N attempts per minute per purpose (sign-in, codes...), email and client IP."""
+    attempts = _login_attempts[_rate_key(request, email, purpose)]
     cutoff = time.time() - 60
     while attempts and attempts[0] < cutoff:
         attempts.popleft()
     if len(attempts) >= LOGIN_ATTEMPTS_PER_MINUTE:
-        raise HTTPException(status_code=429, detail="Too many sign-in attempts. Please wait a minute and try again.")
+        raise HTTPException(status_code=429, detail="Too many attempts. Please wait a minute and try again.")
     attempts.append(time.time())
 
 
-def clear_login_attempts(request: Request, email: str) -> None:
-    _login_attempts.pop(f"{normalize_email(email)}|{request.client.host if request.client else ''}", None)
+def clear_login_attempts(request: Request, email: str, purpose: str = "login") -> None:
+    _login_attempts.pop(_rate_key(request, email, purpose), None)
 
 
 def create_user(db: Session, name: str, email: str, password: Optional[str], email_verified: bool = False,

@@ -134,6 +134,10 @@ async def submit_attempt(attempt_id: str, request: SubmitRequest, user: User = D
     attempt = _attempt(db, user, attempt_id)
     if attempt.status == "graded":
         raise HTTPException(status_code=409, detail="This attempt has already been marked.")
+    # A second submit while the first is still being marked (e.g. the connection dropped and the app retried)
+    # would mark it twice; an interrupted marking resets the status, so this only blocks a live run
+    if attempt.status == "grading" and attempt.submitted_at and now_ms() - attempt.submitted_at < 3 * 60 * 1000:
+        raise HTTPException(status_code=409, detail="Your exam is already being marked. Open it again in a minute to see the result.")
     study_set = attempt.study_set
     exam = upgrade_exam(json.loads(study_set.data))
     config = json.loads(study_set.config or "{}")

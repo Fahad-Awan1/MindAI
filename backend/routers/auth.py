@@ -157,7 +157,7 @@ def find_user(db: Session, email: str) -> Optional[User]:
 @router.post("/signup", response_model=AuthResponse)
 async def signup(request: SignupRequest, http_request: Request, db: Session = Depends(get_db)):
     """Create an account and email a code to confirm the address; signing in works once it is confirmed."""
-    check_login_rate(http_request, request.email)
+    check_login_rate(http_request, request.email, "signup")
     existing = find_user(db, request.email)
     if existing:
         # Signing up again before confirming, with the same password: just send a new code
@@ -188,7 +188,7 @@ async def login(request: LoginRequest, http_request: Request, db: Session = Depe
 @router.post("/verify-email", response_model=AuthResponse)
 def verify_email(request: VerifyEmailRequest, http_request: Request, db: Session = Depends(get_db)):
     """Confirm the email with the emailed code; returns a login token."""
-    check_login_rate(http_request, request.email)
+    check_login_rate(http_request, request.email, "verify")
     user = find_user(db, request.email)
     if user and user.email_verified:
         raise HTTPException(status_code=400, detail="This email is already confirmed. Please sign in.")
@@ -196,7 +196,7 @@ def verify_email(request: VerifyEmailRequest, http_request: Request, db: Session
         raise HTTPException(status_code=400, detail="That code is wrong or has expired. Check the latest email or ask for a new code.")
     user.email_verified = True
     db.commit()
-    clear_login_attempts(http_request, request.email)
+    clear_login_attempts(http_request, request.email, "verify")
     return signed_in(db, user)
 
 
@@ -212,7 +212,7 @@ async def resend_verification(request: EmailRequest, db: Session = Depends(get_d
 @router.post("/forgot-password")
 async def forgot_password(request: EmailRequest, http_request: Request, db: Session = Depends(get_db)):
     """Email a password-reset code. Always the same answer, so it doesn't reveal which emails have accounts."""
-    check_login_rate(http_request, request.email)
+    check_login_rate(http_request, request.email, "forgot")
     user = find_user(db, request.email)
     if user:
         try:
@@ -230,7 +230,7 @@ async def forgot_password(request: EmailRequest, http_request: Request, db: Sess
 @router.post("/reset-password", response_model=AuthResponse)
 def reset_password(request: ResetPasswordRequest, http_request: Request, db: Session = Depends(get_db)):
     """Set a new password with the emailed code. Signs out every other device and signs this one in."""
-    check_login_rate(http_request, request.email)
+    check_login_rate(http_request, request.email, "reset")
     user = find_user(db, request.email)
     if not consume_code(db, user, "reset", request.code):
         raise HTTPException(status_code=400, detail="That code is wrong or has expired. Ask for a new one.")
@@ -239,7 +239,7 @@ def reset_password(request: ResetPasswordRequest, http_request: Request, db: Ses
     user.email_verified = True  # The code proves they own the inbox
     db.commit()
     db.refresh(user)
-    clear_login_attempts(http_request, request.email)
+    clear_login_attempts(http_request, request.email, "reset")
     return signed_in(db, user)
 
 

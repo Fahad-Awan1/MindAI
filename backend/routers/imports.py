@@ -17,6 +17,7 @@ from services.import_service import (
     job_dir,
     job_out,
     run_job,
+    update_job,
     youtube_id,
 )
 
@@ -57,12 +58,22 @@ async def import_media(file: UploadFile = File(...), user: User = Depends(get_cu
         raise HTTPException(status_code=400, detail="Unsupported file. Upload an audio or video recording (MP3, M4A, WAV, MP4, WEBM, MOV...).")
     job = create_job(user.id, "media", filename)
     path = os.path.join(job_dir(job.id), f"source{extension}")
+
+    def fail(message: str) -> None:
+        # Never leave a "queued" job behind: the app would keep polling it and it couldn't be dismissed
+        shutil.rmtree(job_dir(job.id), ignore_errors=True)
+        update_job(job.id, status="failed", stage="Upload failed", error=message)
+
     try:
         size = await run_in_threadpool(_save_upload, file, path)
-    except HTTPException:
-        shutil.rmtree(job_dir(job.id), ignore_errors=True)
+    except HTTPException as e:
+        fail(str(e.detail))
         raise
+    except Exception:
+        fail("The upload didn't complete. Please try again.")
+        raise HTTPException(status_code=500, detail="The upload didn't complete. Please try again.")
     if size == 0:
+        fail("The recording is empty.")
         raise HTTPException(status_code=400, detail="The recording is empty.")
     _start(job, user, path)
     return job_out(job)

@@ -686,8 +686,11 @@ async def update_meta(set_id: str, request: SetMetaUpdate, user: User = Depends(
                 section["instructions"] = str(patch["instructions"]).strip()[:400]
             if "attempt_any" in patch:
                 groups = len({(next((q for q in questions if q["id"] == i), {}) or {}).get("parent_id") or i for i in section["question_ids"]})
-                n = patch["attempt_any"]
-                section["attempt_any"] = int(n) if n and 0 < int(n) < groups else None
+                try:
+                    n = int(patch["attempt_any"] or 0)
+                except (TypeError, ValueError):
+                    raise HTTPException(status_code=422, detail="'Attempt any' must be a number.")
+                section["attempt_any"] = n if 0 < n < groups else None
         _save_questions(db, study_set, questions, exam)
     else:
         db.commit()

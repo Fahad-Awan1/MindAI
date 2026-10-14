@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { DocumentFile } from '../types';
 import { Tooltip } from './Tooltip';
 import { FileText, Trash2, File, Presentation, Plus, FolderOpen, Clock, Loader2, Mic, Globe } from 'lucide-react';
-import { ImportPanel, isMediaFile } from './ImportPanel';
+import { ImportPanel, isMediaFile, recordingTooLarge } from './ImportPanel';
 import { importsAPI, getErrorMessage } from '../services/api';
 import { PageHeader, CountUp, Reveal } from '../motion';
 import { scrollToElement } from '../motion/useLenis';
@@ -40,14 +40,21 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
 
   // Show a placeholder card while each file uploads; remove it once the upload settles (success or failure)
   const [importRefresh, setImportRefresh] = useState(0);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const startUploads = (files: FileList) => {
     // Recordings dropped here go to Lecture-to-Notes instead of the document upload
     const media = Array.from(files).filter(f => isMediaFile(f.name));
+    setImportError(null);
     media.forEach(file => {
+      const tooLarge = recordingTooLarge(file);
+      if (tooLarge) {
+        setImportError(tooLarge);
+        return;
+      }
       importsAPI.uploadMedia(file)
         .then(() => setImportRefresh(n => n + 1))
-        .catch(err => alert(`Could not import "${file.name}": ${getErrorMessage(err, 'Please try again.')}`));
+        .catch(err => setImportError(`Couldn't import "${file.name}": ${getErrorMessage(err, 'Please try again.')}`));
     });
     Array.from(files).filter(f => !isMediaFile(f.name)).forEach(file => {
       const key = nextKeyRef.current++;
@@ -144,7 +151,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
             type="file" 
             id="file-upload" 
             className="hidden" 
-            accept=".txt,.md,.pdf,.docx,.pptx,.mp3,.m4a,.wav,.mp4,.webm,.mov,.ogg,.flac,.aac"
+            accept=".txt,.md,.pdf,.docx,.pptx,.mp3,.m4a,.wav,.mp4,.webm,.mov,.ogg,.flac,.aac,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,audio/*,video/*"
             multiple
             onChange={handleFileChange}
             />
@@ -173,6 +180,9 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
       </Tooltip>
       </Reveal>
 
+      {importError && (
+        <p className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-100 text-sm text-rose-700 [overflow-wrap:anywhere]" role="alert">{importError}</p>
+      )}
       <ImportPanel onImported={onImported} onOpenDocument={onOpenDocument} refreshKey={importRefresh} />
 
       {/* Document Grid */}

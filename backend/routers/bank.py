@@ -136,7 +136,7 @@ def export(set_id: str, format: str = "docx", version: Literal["A", "B"] = "A", 
             key = False  # Never hand out the mark scheme mid-exam
     content, media, filename = export_set(study_set, format, version, key)
     return Response(content=content, media_type=media,
-                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+                    headers={"Content-Disposition": content_disposition(filename)})
 
 
 # ---------------------------------------------------------------------------

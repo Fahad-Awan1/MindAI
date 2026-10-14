@@ -38,6 +38,8 @@ const ConceptGraph = lazy(() =>
 );
 
 const INVITE_KEY = 'mindai.pendingInvite';
+// Placeholder the backend writes while a new document's AI summary is still being generated
+const PENDING_SUMMARY = 'Generating summary...';
 
 /**
  * Invite links look like /join/<code>. Remember the code (it must survive signing up or in)
@@ -77,6 +79,8 @@ const Workspace: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // A failed upload/delete, shown as a dismissable banner (instead of a browser alert)
+  const [actionError, setActionError] = useState<string | null>(null);
   // A saved study set to open when its screen mounts (e.g. clicked on the dashboard)
   const [pendingSetId, setPendingSetId] = useState<string | null>(null);
   // Open the flashcard screen straight into today's spaced-repetition review
@@ -152,13 +156,34 @@ const Workspace: React.FC = () => {
     }
   };
 
+  // A new document's AI summary is written in the background: check back until it's there
+  const watchSummary = useCallback((docId: string) => {
+    let tries = 0;
+    const tick = async () => {
+      tries += 1;
+      try {
+        const docs = await documentsAPI.getAll();
+        const doc = docs.find(d => d.id === docId);
+        if (doc && doc.summary !== PENDING_SUMMARY) {
+          setDocuments(prev => prev.map(d => (d.id === docId ? { ...d, summary: doc.summary } : d)));
+          return;
+        }
+      } catch {
+        // Try again on the next tick
+      }
+      if (tries < 40) window.setTimeout(tick, 4000);
+    };
+    window.setTimeout(tick, 3000);
+  }, []);
+
   const handleUpload = async (file: File) => {
     try {
       const newDoc = await documentsAPI.upload(file);
       setDocuments(prev => [newDoc, ...prev]);
+      if (newDoc.summary === PENDING_SUMMARY) watchSummary(newDoc.id);
     } catch (error) {
       console.error('Error uploading document:', error);
-      alert(`Failed to upload "${file.name}": ${getErrorMessage(error, 'Please try again.')}`);
+      setActionError(`Couldn't upload "${file.name}": ${getErrorMessage(error, 'Please try again.')}`);
     }
   };
 
@@ -169,7 +194,7 @@ const Workspace: React.FC = () => {
       if (selectedDocId === id) setSelectedDocId(null);
     } catch (error) {
       console.error('Error deleting document:', error);
-      alert(`Failed to delete document: ${getErrorMessage(error, 'Please try again.')}`);
+      setActionError(`Couldn't delete the document: ${getErrorMessage(error, 'Please try again.')}`);
     }
   };
 
@@ -344,6 +369,12 @@ const Workspace: React.FC = () => {
               Welcome! Your existing study data ({claimedDocuments} document{claimedDocuments === 1 ? '' : 's'}, chats and progress) is now in your account.
             </span>
             <button onClick={dismissClaimNotice} className="p-1 rounded-lg hover:bg-emerald-100" aria-label="Dismiss"><X className="w-4 h-4" /></button>
+          </div>
+        )}
+        {actionError && (
+          <div className="no-print relative z-10 m-4 mb-0 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center justify-between gap-4 animate-slide-up" role="alert">
+            <span className="min-w-0 [overflow-wrap:anywhere]">{actionError}</span>
+            <button onClick={() => setActionError(null)} className="p-2 -m-1 rounded-lg hover:bg-red-100 flex-shrink-0" aria-label="Dismiss"><X className="w-4 h-4" /></button>
           </div>
         )}
         {loadError && (
