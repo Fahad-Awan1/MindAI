@@ -313,7 +313,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
                 </span>
               </button>
               <Tooltip content="Log out" position={rail ? 'right' : 'top'}>
-                <button onClick={onLogout} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-rose-500/20 transition-colors" aria-label="Log out">
+                <button onClick={onLogout} className="p-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-rose-500/20 transition-colors" aria-label="Log out">
                   <LogOut className="w-4 h-4" />
                 </button>
               </Tooltip>

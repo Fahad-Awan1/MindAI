@@ -113,9 +113,9 @@ export const MindMapGenerator: React.FC<MindMapGeneratorProps> = ({ documents, i
   );
 
   return (
-    <div className="max-w-7xl mx-auto p-8 h-full flex flex-col animate-fade-in">
+    <div className="max-w-7xl mx-auto p-4 md:p-8 h-full flex flex-col animate-fade-in">
       {!mermaidCode && !isGenerating && (
-        <div className="flex flex-col items-center text-center mt-10">
+        <div className="flex flex-col items-center text-center mt-4 md:mt-10">
              <ToolHero
                icon={Network}
                gradient="from-pink-500 to-rose-600"
@@ -170,9 +170,9 @@ export const MindMapGenerator: React.FC<MindMapGeneratorProps> = ({ documents, i
 
       {mermaidCode && (
         <div className="flex-1 flex flex-col h-full">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-pink-50 flex items-center justify-center">
                         <Network className="w-5 h-5 text-pink-600" />
                     </div>
                     <h3 className="font-bold text-slate-800 text-lg truncate">{mapTitle || "Concept Map"}</h3>
@@ -192,12 +192,12 @@ export const MindMapGenerator: React.FC<MindMapGeneratorProps> = ({ documents, i
                 </div>
             </div>
             
-            <div className="flex-1 bg-white rounded-3xl border border-slate-200 shadow-inner overflow-hidden relative flex items-center justify-center p-8">
+            <div className="flex-1 min-h-[60dvh] md:min-h-0 bg-white rounded-3xl border border-slate-200 shadow-inner overflow-auto relative flex p-4 md:p-8" data-lenis-prevent>
                 <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-50"></div>
                 <div 
                     ref={containerRef} 
-                    className="relative z-10 transition-transform duration-300 origin-center"
-                    style={{ transform: `scale(${zoom})` }}
+                    className="relative z-10 m-auto"
+                    style={{ zoom }}
                 ></div>
             </div>
         </div>

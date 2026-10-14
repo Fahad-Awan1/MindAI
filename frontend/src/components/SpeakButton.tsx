@@ -53,7 +53,7 @@ export const SpeakButton: React.FC<{ text: string; className?: string }> = ({ te
         type="button"
         onClick={handleClick}
         aria-label={state === 'idle' ? 'Read aloud' : 'Stop reading'}
-        className={`p-1 rounded-md transition-all ${state === 'idle' ? 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-60 group-hover:opacity-100' : 'text-indigo-600 bg-indigo-50'} ${className}`}
+        className={`p-2 rounded-md transition-all ${state === 'idle' ? 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-60 group-hover:opacity-100 hover-reveal' : 'text-indigo-600 bg-indigo-50'} ${className}`}
       >
         {state === 'loading' ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
           : state === 'speaking' ? <Square className="w-3.5 h-3.5 fill-current" />

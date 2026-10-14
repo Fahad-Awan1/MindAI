@@ -193,7 +193,7 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
                 {r?.correct ? <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" /> : r && r.score > 0 ? <CircleDot className="w-5 h-5 text-amber-500 flex-shrink-0" /> : <XCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />}
                 <span className="text-xs font-bold text-slate-400 w-6">{i + 1}</span>
                 <span className="flex-1 min-w-0 text-sm font-semibold text-slate-800 truncate">{q.question.replace(/____/g, '___')}</span>
-                <TypeBadge type={q.type} />
+                <span className="hidden sm:inline-flex"><TypeBadge type={q.type} /></span>
                 {resp?.flagged && <span className="text-[10px] font-bold text-amber-600">FLAGGED</span>}
                 <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
               </button>

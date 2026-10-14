@@ -417,7 +417,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
                       <button
                         type="button"
                         onClick={() => handleCopy(msg)}
-                        className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-60 group-hover:opacity-100 transition-all"
+                        className="p-2 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-60 group-hover:opacity-100 hover-reveal transition-all"
                         aria-label="Copy answer"
                       >
                         {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}

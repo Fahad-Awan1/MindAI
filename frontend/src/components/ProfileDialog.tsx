@@ -63,13 +63,13 @@ export const ProfileDialog: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm dialog-backdrop" onClick={onClose} />
       <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl dialog-panel max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 pt-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold" style={{ background: user.avatar_color }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 flex-shrink-0 rounded-full flex items-center justify-center text-white font-bold" style={{ background: user.avatar_color }}>
               {initials(user.name)}
             </div>
-            <div>
-              <p className="font-bold text-slate-900">{user.name}</p>
-              <p className="text-sm text-slate-500">{user.email}</p>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-900 break-anywhere">{user.name}</p>
+              <p className="text-sm text-slate-500 break-all">{user.email}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">

@@ -155,13 +155,13 @@ export const TeachBack: React.FC<TeachBackProps> = ({ documents, initialSetId, o
     const fb = result.data.feedback;
     const tone = scoreTone(fb.score);
     return (
-      <div className="max-w-4xl mx-auto p-8 pb-20 animate-fade-in">
-        <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="max-w-4xl mx-auto p-4 md:p-8 pb-20 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="min-w-0">
             <p className="text-xs font-bold text-teal-600 uppercase tracking-wider">Teach-back · {result.document_title}</p>
-            <h2 className="text-3xl font-display font-bold text-slate-900 truncate">{result.data.concept}</h2>
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-slate-900 break-anywhere">{result.data.concept}</h2>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex flex-wrap gap-2 flex-shrink-0">
             <button onClick={tryAgain} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 text-white text-sm font-bold hover:bg-teal-700 transition-colors">
               <RotateCcw className="w-4 h-4" /> Try again
             </button>
@@ -212,8 +212,8 @@ export const TeachBack: React.FC<TeachBackProps> = ({ documents, initialSetId, o
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-8 pb-20 animate-fade-in">
-      <div className="flex flex-col items-center text-center mt-10">
+    <div className="max-w-5xl mx-auto p-4 md:p-8 pb-20 animate-fade-in">
+      <div className="flex flex-col items-center text-center mt-4 md:mt-10">
         <ToolHero
           icon={MessageSquareQuote}
           gradient="from-teal-400 to-emerald-600"
@@ -225,7 +225,7 @@ export const TeachBack: React.FC<TeachBackProps> = ({ documents, initialSetId, o
           subtitle="The best way to learn is to teach. Explain a concept in your own words and MindAI will grade your understanding against the document."
         />
 
-        <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-100 p-8 relative overflow-hidden text-left tool-card spotlight">
+        <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 relative overflow-hidden text-left tool-card spotlight">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-emerald-600"></div>
 
           <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">Source Material</label>

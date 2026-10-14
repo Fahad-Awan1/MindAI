@@ -134,24 +134,24 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ exam, attempt, onSubmit }) =
   return (
     <div className="max-w-4xl mx-auto">
       {/* Exam bar */}
-      <div className="sticky top-3 z-20 mb-5 flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900 text-white shadow-2xl animate-slide-up">
+      <div className="sticky top-3 z-20 mb-5 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-slate-900 text-white shadow-2xl animate-slide-up">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold truncate">{exam.title}</p>
           <p className="text-xs text-white/60">{stats.answered}/{stats.total} answered</p>
         </div>
         <span className={`flex items-center gap-1.5 text-xs font-semibold ${saveState === 'offline' ? 'text-amber-300' : 'text-white/60'}`}>
           {saveState === 'offline' ? <CloudOff className="w-4 h-4" /> : <Cloud className="w-4 h-4" />}
-          {saveState === 'saving' ? 'Saving…' : saveState === 'offline' ? 'Saved on this device' : 'Saved'}
+          <span className="hidden sm:inline">{saveState === 'saving' ? 'Saving…' : saveState === 'offline' ? 'Saved on this device' : 'Saved'}</span>
         </span>
-        <button onClick={toggleFullscreen} className="p-2 rounded-lg text-white/70 hover:bg-white/10" title={fullscreen ? 'Exit full screen' : 'Full screen'}>
+        <button onClick={toggleFullscreen} className="hidden sm:block p-2 rounded-lg text-white/70 hover:bg-white/10" title={fullscreen ? 'Exit full screen' : 'Full screen'}>
           {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </button>
         {remaining !== null && (
-          <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-lg font-bold tabular-nums ${lowTime ? 'bg-rose-500 animate-pulse' : 'bg-white/10'}`}>
+          <span className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-mono text-base sm:text-lg font-bold tabular-nums ${lowTime ? 'bg-rose-500 animate-pulse' : 'bg-white/10'}`}>
             <Timer className="w-4 h-4" /> {formatDuration(Math.max(0, remaining))}
           </span>
         )}
-        <button onClick={() => setConfirming(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-slate-900 font-bold text-sm hover:bg-sky-50">
+        <button onClick={() => setConfirming(true)} className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-white text-slate-900 font-bold text-sm hover:bg-sky-50 flex-shrink-0">
           <Send className="w-4 h-4" /> Submit
         </button>
       </div>
@@ -174,9 +174,9 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ exam, attempt, onSubmit }) =
 
       {current && (
         <div key={current.id} className="space-y-5 animate-fade-in">
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-sky-50 border border-sky-100 text-sm text-sky-900">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3 p-4 rounded-2xl bg-sky-50 border border-sky-100 text-sm text-sky-900">
             <span className="font-bold">Section {current.id} · {current.title}.</span>
-            <span className="flex-1">{current.instructions}</span>
+            <span className="flex-1 min-w-0">{current.instructions}</span>
             {current.attempt_any && (
               <span className={`font-bold whitespace-nowrap ${answeredGroups > current.attempt_any ? 'text-amber-700' : ''}`}>{answeredGroups}/{current.attempt_any} chosen</span>
             )}

@@ -114,7 +114,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ set, questions, onQuesti
           <div>
             <p className="page-eyebrow text-primary-600">Ready · {questions.length} questions</p>
             {renaming !== null ? (
-              <form className="flex items-center gap-2 mt-1" onSubmit={async e => {
+              <form className="flex flex-wrap items-center gap-2 mt-1" onSubmit={async e => {
                 e.preventDefault();
                 if (!renaming.trim()) return;
                 try {
@@ -126,14 +126,14 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ set, questions, onQuesti
                 }
               }}>
                 <input autoFocus value={renaming} onChange={e => setRenaming(e.target.value)} maxLength={200}
-                  className="text-xl font-display font-bold rounded-xl border-slate-200 py-1.5 focus:border-primary-500 focus:ring-primary-500" aria-label="Quiz title" />
+                  className="min-w-0 flex-1 basis-48 text-xl font-display font-bold rounded-xl border-slate-200 py-1.5 focus:border-primary-500 focus:ring-primary-500" aria-label="Quiz title" />
                 <button type="submit" className="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold">Save</button>
                 <button type="button" onClick={() => setRenaming(null)} className="px-2 py-2 text-sm text-slate-500">Cancel</button>
               </form>
             ) : (
-              <h2 className="group/title text-2xl md:text-3xl font-display font-bold text-slate-900 mt-1 flex items-center gap-2">
+              <h2 className="group/title text-2xl md:text-3xl font-display font-bold text-slate-900 mt-1 flex items-center gap-2 break-anywhere">
                 {set.title}
-                <button onClick={() => setRenaming(set.title)} className="p-1.5 rounded-lg text-slate-300 hover:text-slate-700 hover:bg-slate-100" title="Rename" aria-label="Rename quiz"><Pencil className="w-4 h-4" /></button>
+                <button onClick={() => setRenaming(set.title)} className="p-2 flex-shrink-0 rounded-lg text-slate-300 hover:text-slate-700 hover:bg-slate-100" title="Rename" aria-label="Rename quiz"><Pencil className="w-4 h-4" /></button>
               </h2>
             )}
             {set.best_score_pct !== null && <p className="text-sm text-slate-500 mt-1">Best so far: <span className="font-bold text-slate-800">{set.best_score_pct}%</span> · {set.attempts} attempt{set.attempts === 1 ? '' : 's'}</p>}

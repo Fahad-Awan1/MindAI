@@ -329,7 +329,8 @@ const Workspace: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              className="p-2.5 -ml-2.5 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              aria-label="Open menu"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -337,7 +338,7 @@ const Workspace: React.FC = () => {
           </div>
           <button
             onClick={() => setShowProfile(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs"
             style={{ background: user?.avatar_color }}
             aria-label="Your profile"
           >

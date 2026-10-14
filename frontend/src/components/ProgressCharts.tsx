@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useInView } from '../motion';
 import { DailyActivity, DocumentMastery, QuizTrendPoint } from '../types';
 
@@ -17,10 +17,38 @@ interface TooltipBoxProps {
   children: React.ReactNode;
 }
 
+/**
+ * Width of the chart in CSS pixels (so the SVG's units are real pixels and its 10px labels stay readable on
+ * a phone instead of being scaled down), and a hover state that also works by tapping: on touch screens the
+ * tooltip closes by itself.
+ */
+const useChartFrame = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(560);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setWidth(Math.max(240, Math.round(el.getBoundingClientRect().width)));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const [hover, setHoverState] = useState<number | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const setHover = (i: number | null) => {
+    setHoverState(i);
+    window.clearTimeout(timer.current);
+    if (i !== null && window.matchMedia('(hover: none)').matches) timer.current = window.setTimeout(() => setHoverState(null), 3000);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return { ref, width, hover, setHover };
+};
+
 /** Tooltip positioned above the hovered mark; clamped so it stays inside the chart. */
 const TooltipBox: React.FC<TooltipBoxProps> = ({ leftPct, children }) => (
   <div
-    className="absolute -top-2 z-10 -translate-y-full pointer-events-none bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap"
+    className="absolute -top-2 z-10 -translate-y-full pointer-events-none bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap max-w-[calc(100vw-3rem)]"
     style={{ left: `${Math.min(Math.max(leftPct, 12), 88)}%`, transform: 'translate(-50%, -100%)' }}
     role="tooltip"
   >
@@ -33,19 +61,21 @@ const TooltipBox: React.FC<TooltipBoxProps> = ({ leftPct, children }) => (
 /* ------------------------------------------------------------------ */
 
 export const ActivityChart: React.FC<{ days: DailyActivity[] }> = ({ days }) => {
-  const [hover, setHover] = useState<number | null>(null);
+  const { ref, width, hover, setHover } = useChartFrame();
   const max = Math.max(1, ...days.map(d => d.total));
   const total = days.reduce((sum, d) => sum + d.total, 0);
   const activeDays = days.filter(d => d.total > 0).length;
 
-  const W = 560, H = 160, PAD_B = 22, PAD_T = 8;
+  const W = width, H = 160, PAD_B = 22, PAD_T = 8;
   const plotH = H - PAD_B - PAD_T;
   const slot = W / days.length;
-  const barW = Math.min(24, slot - 6);
+  const barW = Math.min(24, Math.max(4, slot * 0.62));
+  // Date labels need ~46px each: on a narrow chart show every 2nd/3rd/... day, always including today
+  const labelEvery = Math.max(2, Math.ceil(46 / slot));
 
   return (
     <div>
-      <div className="relative">
+      <div ref={ref} className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="w-full h-40"
@@ -73,8 +103,8 @@ export const ActivityChart: React.FC<{ days: DailyActivity[] }> = ({ days }) => 
                     style={{ animationDelay: `${i * 45}ms`, transition: 'opacity 0.3s' }}
                   />
                 )}
-                {/* Labels every other day + today, to avoid crowding */}
-                {(i % 2 === days.length % 2 || isToday) && (
+                {/* Labels spaced out to avoid crowding, counted back from today */}
+                {(days.length - 1 - i) % labelEvery === 0 && (
                   <text x={x + barW / 2} y={H - 6} textAnchor="middle" fontSize={10} fill="#94a3b8" fontWeight={isToday ? 700 : 400}>
                     {isToday ? 'Today' : shortDate(d.date)}
                   </text>
@@ -83,7 +113,8 @@ export const ActivityChart: React.FC<{ days: DailyActivity[] }> = ({ days }) => 
                 <rect
                   x={i * slot} y={0} width={slot} height={H - PAD_B}
                   fill="transparent"
-                  onMouseEnter={() => setHover(i)}
+                  onPointerEnter={() => setHover(i)}
+                  onPointerDown={() => setHover(i)}
                 />
               </g>
             );
@@ -123,7 +154,7 @@ export const ActivityChart: React.FC<{ days: DailyActivity[] }> = ({ days }) => 
 /* ------------------------------------------------------------------ */
 
 export const AccuracyTrend: React.FC<{ points: QuizTrendPoint[] }> = ({ points }) => {
-  const [hover, setHover] = useState<number | null>(null);
+  const { ref, width, hover, setHover } = useChartFrame();
 
   if (points.length === 0) {
     return (
@@ -133,7 +164,7 @@ export const AccuracyTrend: React.FC<{ points: QuizTrendPoint[] }> = ({ points }
     );
   }
 
-  const W = 560, H = 160, PAD_L = 34, PAD_R = 14, PAD_T = 12, PAD_B = 12;
+  const W = width, H = 160, PAD_L = 34, PAD_R = 14, PAD_T = 12, PAD_B = 12;
   const plotW = W - PAD_L - PAD_R;
   const plotH = H - PAD_T - PAD_B;
   const xAt = (i: number) => PAD_L + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
@@ -144,7 +175,7 @@ export const AccuracyTrend: React.FC<{ points: QuizTrendPoint[] }> = ({ points }
 
   return (
     <div>
-      <div className="relative">
+      <div ref={ref} className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="w-full h-40"
@@ -181,7 +212,8 @@ export const AccuracyTrend: React.FC<{ points: QuizTrendPoint[] }> = ({ points }
                 key={`hit-${p.created_at}-${i}`}
                 x={xAt(i) - half} y={0} width={half * 2} height={H}
                 fill="transparent"
-                onMouseEnter={() => setHover(i)}
+                onPointerEnter={() => setHover(i)}
+                  onPointerDown={() => setHover(i)}
               />
             );
           })}
@@ -190,7 +222,7 @@ export const AccuracyTrend: React.FC<{ points: QuizTrendPoint[] }> = ({ points }
           <TooltipBox leftPct={(xAt(hover) / W) * 100}>
             <p className="font-bold">{points[hover].score_pct}%</p>
             <p className="text-slate-300 max-w-[14rem] truncate">{points[hover].study_set_title || 'Quiz'}</p>
-            <p className="text-slate-400">{points[hover].document_title} · {new Date(points[hover].created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+            <p className="text-slate-400 max-w-[14rem] truncate">{points[hover].document_title} · {new Date(points[hover].created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
           </TooltipBox>
         )}
       </div>

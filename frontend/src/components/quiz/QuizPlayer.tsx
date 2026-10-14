@@ -230,9 +230,9 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
   return (
     <div className="max-w-5xl mx-auto">
       {/* Top bar */}
-      <div className="sticky top-3 z-20 mb-5 flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/70 shadow-lg shadow-slate-900/5 animate-slide-up">
+      <div className="sticky top-3 z-20 mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 px-3 sm:px-4 py-3 rounded-2xl bg-white/85 backdrop-blur-xl border border-slate-200/70 shadow-lg shadow-slate-900/5 animate-slide-up">
         <button onClick={() => window.confirm('Leave this quiz? Your answers so far won\'t be saved.') && onExit()} className="p-2 -ml-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Leave quiz"><LogOut className="w-4 h-4" /></button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-32">
           <p className="text-sm font-bold text-slate-800 truncate">{title}</p>
           <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 overflow-hidden">
             <div className="h-full rounded-full bg-gradient-to-r from-primary-500 to-indigo-500 transition-all duration-700 ease-out-expo" style={{ width: `${progress}%` }} />
@@ -241,7 +241,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
         {mode === 'survival' && (
           <div className="flex items-center gap-0.5" aria-label={`${lives} lives left`}>
             {Array.from({ length: config.lives }).map((_, i) => (
-              <Heart key={i} className={`w-5 h-5 transition-all duration-500 ${i < lives ? 'text-rose-500 fill-rose-500' : 'text-slate-200 scale-75'}`} />
+              <Heart key={i} className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-500 ${i < lives ? 'text-rose-500 fill-rose-500' : 'text-slate-200 scale-75'}`} />
             ))}
           </div>
         )}
@@ -264,7 +264,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
               <TypeBadge type={q.type} /><DifficultyBadge difficulty={q.difficulty} /><BloomBadge bloom={q.bloom} />
               {q.topic && <span className="text-xs text-slate-400 ml-1">{q.topic}</span>}
               <span className="flex-1" />
-              <button onClick={() => patchMeta(q.id, { flagged: !m.flagged })} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-colors ${m.flagged ? 'bg-amber-100 text-amber-700' : 'text-slate-400 hover:bg-slate-100'}`} title="Flag for review (F)">
+              <button onClick={() => patchMeta(q.id, { flagged: !m.flagged })} className={`flex items-center gap-1 px-3 py-2 -my-1 rounded-lg text-xs font-bold transition-colors ${m.flagged ? 'bg-amber-100 text-amber-700' : 'text-slate-400 hover:bg-slate-100'}`} title="Flag for review (F)">
                 <Flag className={`w-3.5 h-3.5 ${m.flagged ? 'fill-current' : ''}`} /> {m.flagged ? 'Flagged' : 'Flag'}
               </button>
             </div>

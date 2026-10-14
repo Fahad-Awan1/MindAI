@@ -74,9 +74,9 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ documents, initialSe
   );
 
   return (
-    <div className="max-w-5xl mx-auto p-8 pb-20 animate-fade-in">
+    <div className="max-w-5xl mx-auto p-4 md:p-8 pb-20 animate-fade-in">
       {!plan.length && !isGenerating && (
-        <div className="flex flex-col items-center text-center mt-10">
+        <div className="flex flex-col items-center text-center mt-4 md:mt-10">
              <ToolHero
                icon={CalendarClock}
                gradient="from-violet-500 to-purple-600"
@@ -154,9 +154,9 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ documents, initialSe
 
       {plan.length > 0 && (
         <div id="study-plan-content" className="print-content">
-            <div className="flex justify-between items-end mb-8 no-print">
-                <div>
-                    <h2 className="text-3xl font-bold text-slate-900">{activeSet?.title || `Your ${plan.length}-Day Plan`}</h2>
+            <div className="flex flex-wrap justify-between items-end gap-3 mb-8 no-print">
+                <div className="min-w-0">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 break-anywhere">{activeSet?.title || `Your ${plan.length}-Day Plan`}</h2>
                     <p className="text-slate-500">Follow this schedule to master the material.</p>
                 </div>
                 <div className="flex gap-3">
@@ -185,11 +185,11 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ documents, initialSe
                          </Tooltip>
                          
                          {/* For print, we use a cleaner look without hover shadows and with borders */}
-                         <div className="flex-1 bg-white rounded-3xl p-6 shadow-sm border border-slate-100 group-hover:shadow-md transition-shadow print-content border-l-4 border-l-violet-500 md:border-l-slate-100"
+                         <div className="flex-1 min-w-0 bg-white rounded-3xl p-4 md:p-6 shadow-sm border border-slate-100 group-hover:shadow-md transition-shadow print-content border-l-4 border-l-violet-500 md:border-l-slate-100"
                               style={{ breakInside: 'avoid' }}>
-                             <div className="flex justify-between items-start mb-4">
-                                 <h3 className="text-xl font-bold text-slate-800">Day {day.day}: {day.topic}</h3>
-                                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                             <div className="flex justify-between items-start gap-3 mb-4">
+                                 <h3 className="text-lg md:text-xl font-bold text-slate-800 min-w-0 break-anywhere">Day {day.day}: {day.topic}</h3>
+                                 <div className="flex flex-shrink-0 whitespace-nowrap items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
                                      <Clock className="w-3.5 h-3.5" />
                                      {day.estimated_minutes} min
                                  </div>

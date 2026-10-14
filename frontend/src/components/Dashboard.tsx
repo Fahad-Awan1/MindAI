@@ -479,19 +479,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ documents, onChangeView, o
       <Reveal>
         <div className={`${cardClass} overflow-hidden`}>
           {documents.length > 0 ? (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full table-fixed text-left border-collapse">
               <thead className="bg-slate-50/60 border-b border-slate-100">
                 <tr>
                   <th className="px-6 md:px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em]">Name</th>
-                  <th className="px-6 md:px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em]">Type</th>
-                  <th className="hidden sm:table-cell px-6 md:px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em]">Date Added</th>
+                  <th className="w-24 md:w-32 px-4 md:px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em]">Type</th>
+                  <th className="hidden sm:table-cell w-40 px-6 md:px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em]">Date Added</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 stagger">
                 {documents.slice(0, 5).map(doc => (
                   <tr key={doc.id} className="hover:bg-primary-50/40 transition-colors duration-300 group">
-                    <td className="px-6 md:px-8 py-4">
-                      <div className="flex items-center gap-3">
+                    <td className="px-4 md:px-8 py-4">
+                      <div className="flex items-center gap-3 min-w-0">
                         <span className="w-9 h-9 rounded-xl bg-slate-100 group-hover:bg-primary-100 text-slate-400 group-hover:text-primary-600 flex items-center justify-center transition-colors duration-300 flex-shrink-0">
                           <FileText className="w-4 h-4" />
                         </span>

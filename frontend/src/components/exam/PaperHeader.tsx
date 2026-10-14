@@ -107,7 +107,7 @@ export const PaperHeader: React.FC<PaperHeaderProps> = ({ header, editing, durat
           {editing && header.logo && (
             <div className="no-print absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-1 font-sans">
               <button type="button" onClick={() => fileRef.current?.click()} className="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-bold text-slate-600 shadow-sm">Change</button>
-              <button type="button" onClick={() => set({ logo: null })} className="p-0.5 rounded bg-white border border-slate-200 text-slate-500 shadow-sm" aria-label="Remove logo"><X className="w-3 h-3" /></button>
+              <button type="button" onClick={() => set({ logo: null })} className="p-1.5 rounded bg-white border border-slate-200 text-slate-500 shadow-sm" aria-label="Remove logo"><X className="w-3.5 h-3.5" /></button>
             </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={async e => {
@@ -142,7 +142,9 @@ export const PaperHeader: React.FC<PaperHeaderProps> = ({ header, editing, durat
       <div className="mt-4 border-t-[3px] border-black" />
 
       {/* Details table */}
-      <table className="w-full mt-3 border-collapse border border-black text-[13px] md:text-sm">
+      {/* Four columns of details: scroll sideways on a narrow phone rather than squeezing every cell */}
+      <div className="mt-3 overflow-x-auto">
+      <table className="w-full min-w-[30rem] md:min-w-0 border-collapse border border-black text-[13px] md:text-sm">
         <tbody>
           {pairs.map((pair, r) => (
             <tr key={r}>
@@ -159,7 +161,7 @@ export const PaperHeader: React.FC<PaperHeaderProps> = ({ header, editing, durat
                           <input value={f.value} onChange={e => setField(i, { value: e.target.value })}
                             placeholder={f.auto === 'duration' ? `${duration} Minutes (auto)` : f.auto === 'marks' ? `${totalMarks} (auto)` : ''}
                             className="w-full bg-transparent border-0 p-0 focus:ring-0 text-[13px] placeholder:text-slate-400" />
-                          <button type="button" onClick={() => set({ fields: header.fields.filter((_, j) => j !== i) })} className="no-print text-slate-300 hover:text-rose-500" aria-label={`Remove ${f.label}`}><Trash2 className="w-3 h-3" /></button>
+                          <button type="button" onClick={() => set({ fields: header.fields.filter((_, j) => j !== i) })} className="no-print p-1.5 -m-1 text-slate-300 hover:text-rose-500" aria-label={`Remove ${f.label}`}><Trash2 className="w-3.5 h-3.5" /></button>
                         </span>
                       ) : fieldValue(f, duration, totalMarks)}
                     </td>
@@ -182,6 +184,7 @@ export const PaperHeader: React.FC<PaperHeaderProps> = ({ header, editing, durat
           </tr>
         </tbody>
       </table>
+      </div>
       {editing && (
         <button type="button" onClick={() => set({ fields: [...header.fields, { label: 'New field', value: '' }] })}
           className="no-print mt-2 flex items-center gap-1 text-xs font-sans font-bold text-sky-700 hover:underline"><Plus className="w-3.5 h-3.5" /> Add a detail row</button>
