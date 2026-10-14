@@ -1,0 +1,87 @@
+/* Base styles - keeping minimal as Tailwind handles most */
+
+/* Code inside fenced blocks shouldn't get the inline-code pill styling */
+.prose pre code {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  font-weight: 400 !important;
+}
+
+/* Blinking cursor shown while an AI answer is streaming */
+.streaming-cursor::after {
+  content: '▍';
+  display: inline-block;
+  margin-left: 2px;
+  color: #6366f1;
+  animation: cursor-blink 1s steps(2, start) infinite;
+}
+
+@keyframes cursor-blink {
+  to { visibility: hidden; }
+}
+
+/* Minimal print styles for PDF generation */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-content {
+    display: block !important;
+  }
+  
+  /* Ensure text is visible */
+  body, * {
+    color: #000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Let the app shell grow so printed content isn't clipped to one screen */
+  .h-screen {
+    height: auto !important;
+  }
+
+  .overflow-hidden,
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
+
+  /* Prevent page breaks inside cards */
+  .break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+/* PDF-specific helper classes */
+.pdf-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.pdf-question-card {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #ddd;
+  background: white;
+  page-break-inside: avoid;
+}
+
+.pdf-option {
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+}
+
+
+
+/* Phones: the page never scrolls sideways */
+html, body { overflow-x: hidden; overscroll-behavior-x: none; }
+
+/* Phone app: when Android doesn't shrink the page for the on-screen keyboard, leave room for it ourselves */
+html.keyboard-open body { padding-bottom: var(--keyboard-inset, 0px); }
+html.keyboard-open .app-shell { height: calc(100dvh - var(--keyboard-inset, 0px)) !important; }

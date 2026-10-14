@@ -1,0 +1,5 @@
+{
+  "name": "MindAI Student Assistant",
+  "description": "A comprehensive AI-powered study companion. Organize documents, generate interactive quizzes, create flashcards, and chat with your study materials using advanced Gemini AI.",
+  "requestFramePermissions": []
+}
