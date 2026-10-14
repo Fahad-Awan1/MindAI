@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ToolHero } from './ToolHero';
 import { AudioOverviewData, DocumentFile, StudySet, StudySetSummary } from '../types';
 import { audioAPI, studySetsAPI, getErrorMessage, VoiceStatus } from '../services/api';
-import { getVoiceStatus, pickBrowserVoices, browserSpeechSupported, stopSpeaking } from '../services/speech';
+import { getVoiceStatus, pickBrowserVoices, deviceSpeechSupported, speakWithDevice, stopSpeaking } from '../services/speech';
+import { isNative } from '../services/platform';
 import { useSelectedDocument } from '../hooks/useSelectedDocument';
 import { useInitialStudySet } from '../hooks/useInitialStudySet';
 import { SavedSets } from './SavedSets';
@@ -71,7 +72,7 @@ export const AudioOverview: React.FC<AudioOverviewProps> = ({ documents, initial
 
   const stopAll = () => {
     speechToken.current++;
-    if (browserSpeechSupported()) window.speechSynthesis.cancel();
+    stopSpeaking();
     audioRef.current?.pause();
     setIsPlaying(false);
   };
@@ -79,7 +80,7 @@ export const AudioOverview: React.FC<AudioOverviewProps> = ({ documents, initial
   // Stop playback when leaving the screen
   useEffect(() => () => {
     speechToken.current++;
-    if (browserSpeechSupported()) window.speechSynthesis.cancel();
+    stopSpeaking();
   }, []);
 
   // Keep the current line in view
@@ -134,6 +135,23 @@ export const AudioOverview: React.FC<AudioOverviewProps> = ({ documents, initial
   /** Browser voices: speak lines one after another, alternating host voices. */
   const speakFrom = (index: number) => {
     const token = ++speechToken.current;
+    if (isNative) {
+      // The phone's own text-to-speech: line by line, a different pitch for the second host
+      (async () => {
+        for (let i = index; i < lines.length; i++) {
+          if (token !== speechToken.current) return;
+          setCurrent(i);
+          try {
+            await speakWithDevice(lines[i].text, { rate: speedRef.current, pitch: lines[i].speaker === 'A' ? 1 : 1.2 });
+          } catch {
+            if (token === speechToken.current) { setIsPlaying(false); setError("This phone couldn't read the overview aloud. Check its text-to-speech settings."); }
+            return;
+          }
+        }
+        if (token === speechToken.current) { setIsPlaying(false); setCurrent(0); }
+      })();
+      return;
+    }
     window.speechSynthesis.cancel();
     const voices = pickBrowserVoices();
     const speakLine = (i: number) => {
@@ -168,7 +186,7 @@ export const AudioOverview: React.FC<AudioOverviewProps> = ({ documents, initial
       audioRef.current.currentTime = lineStarts[index] ?? 0;
       audioRef.current.playbackRate = speed;
       audioRef.current.play().catch(() => setIsPlaying(false));
-    } else if (browserSpeechSupported()) {
+    } else if (deviceSpeechSupported()) {
       speakFrom(index);
     } else {
       setIsPlaying(false);

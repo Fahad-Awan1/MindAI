@@ -1,11 +1,16 @@
+import { Capacitor } from '@capacitor/core';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { voiceAPI, VoiceStatus } from './api';
 
 /**
  * Text-to-speech playback.
  *
- * Uses the server's Groq voices when they are enabled, otherwise the browser's built-in
- * speech synthesis (works offline, no setup). Only one thing speaks at a time.
+ * Uses the server's Groq voices when they are enabled, otherwise the device's own voice: the browser's
+ * speech synthesis on the web, the phone's text-to-speech engine in the Android app (its WebView has no
+ * Web Speech). Only one thing speaks at a time.
  */
+
+const native = Capacitor.isNativePlatform();
 
 let statusPromise: Promise<VoiceStatus | null> | null = null;
 
@@ -34,7 +39,28 @@ export const plainTextForSpeech = (text: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
-export const browserSpeechSupported = () => typeof window !== 'undefined' && 'speechSynthesis' in window;
+export const browserSpeechSupported = () => !native && typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+/** Whether this device can speak text without the server (browser voices, or the phone's TTS in the app). */
+export const deviceSpeechSupported = () => native || browserSpeechSupported();
+
+/**
+ * Speak one piece of text with the device voice; resolves when it finishes or is stopped.
+ * `voiceIndex` 0/1 alternates hosts (browser voices; in the app a different pitch tells them apart).
+ */
+export const speakWithDevice = async (text: string, opts: { rate?: number; pitch?: number; voice?: SpeechSynthesisVoice } = {}): Promise<void> => {
+  if (native) {
+    try {
+      await TextToSpeech.speak({ text, lang: 'en-US', rate: opts.rate ?? 1, pitch: opts.pitch ?? 1, volume: 1, category: 'playback' });
+    } catch (err) {
+      // stop() makes the pending speak() reject: that's a normal stop, not a failure
+      if (/interrupt|stop|cancel/i.test(err instanceof Error ? err.message : String(err))) return;
+      throw err;
+    }
+    return;
+  }
+  return speakWithBrowser(text, opts.voice, opts.rate, opts.pitch);
+};
 
 /** Two distinct English browser voices (for two-host audio overviews). */
 export const pickBrowserVoices = (): SpeechSynthesisVoice[] => {
@@ -60,9 +86,10 @@ export const stopSpeaking = () => {
     currentUrl = null;
   }
   if (browserSpeechSupported()) window.speechSynthesis.cancel();
+  if (native) TextToSpeech.stop().catch(() => {});
 };
 
-const speakWithBrowser = (text: string, voice?: SpeechSynthesisVoice): Promise<void> =>
+const speakWithBrowser = (text: string, voice?: SpeechSynthesisVoice, rate = 1.02, pitch = 1): Promise<void> =>
   new Promise((resolve, reject) => {
     if (!browserSpeechSupported()) {
       reject(new Error('Speech is not supported in this browser.'));
@@ -70,7 +97,8 @@ const speakWithBrowser = (text: string, voice?: SpeechSynthesisVoice): Promise<v
     }
     const utterance = new SpeechSynthesisUtterance(text);
     if (voice) utterance.voice = voice;
-    utterance.rate = 1.02;
+    utterance.rate = rate;
+    utterance.pitch = pitch;
     utterance.onend = () => resolve();
     utterance.onerror = (e) => (e.error === 'interrupted' || e.error === 'canceled' ? resolve() : reject(new Error(e.error)));
     window.speechSynthesis.speak(utterance);
@@ -107,5 +135,5 @@ export const speak = async (
       statusPromise = Promise.resolve(status ? { ...status, tts_available: false } : null);
     }
   }
-  await speakWithBrowser(plain, options.browserVoice);
+  await speakWithDevice(plain, { voice: options.browserVoice, rate: 1.02 });
 };
