@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useBackHandler } from '../hooks/useBackHandler';
 import { DocumentFile, Persona, RoomDetail, RoomMessage, Source, UserBrief } from '../types';
 import { roomsAPI, studyGroupAPI, studySetsAPI, challengesAPI, Challenge, getErrorMessage } from '../services/api';
 import { ChallengeModal, Leaderboard } from './quiz/ChallengeModal';
@@ -102,6 +103,11 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   const [quizCount, setQuizCount] = useState(5);
   const [openSource, setOpenSource] = useState<Source | null>(null);
   const [showPanel, setShowPanel] = useState(false);
+  useBackHandler(() => {
+    if (showPanel) setShowPanel(false);
+    else if (showSettings) setShowSettings(false);
+    else onBack();
+  });
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasOlder, setHasOlder] = useState(true);
   const [unseen, setUnseen] = useState(0);

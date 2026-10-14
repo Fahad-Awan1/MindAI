@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useBackHandler } from '../../hooks/useBackHandler';
 import { CheckCircle2, Loader2, Medal, Trophy, X, XCircle } from 'lucide-react';
 import { Challenge, ChallengeRow, challengesAPI, getErrorMessage } from '../../services/api';
 import { ItemResult, Question, ResponseItem } from '../../assessment/types';
@@ -33,6 +34,7 @@ export const Leaderboard: React.FC<{ rows: ChallengeRow[]; meId?: string; limit?
 export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challengeId, meId, onClose }) => {
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [stage, setStage] = useState<'intro' | 'playing' | 'grading' | 'done'>('intro');
+  useBackHandler(onClose, stage !== 'playing' && stage !== 'grading');
   const [result, setResult] = useState<{ results: ItemResult[]; score_pct: number; leaderboard: ChallengeRow[]; questions: Question[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +57,10 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ challengeId, meI
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-50/95 backdrop-blur-xl overflow-y-auto dialog-backdrop" role="dialog" aria-modal="true" aria-label="Quiz challenge" data-lenis-prevent>
-      <button onClick={onClose} className="fixed top-4 right-4 z-[60] p-2 rounded-full bg-white shadow-md text-slate-500 hover:text-slate-800" aria-label="Close"><X className="w-5 h-5" /></button>
+      {/* Hidden while playing: it would sit on the quiz bar's timer, and the bar has its own exit (with a confirm) */}
+      {stage !== 'playing' && (
+        <button onClick={onClose} className="fixed top-4 right-4 z-[60] p-2.5 rounded-full bg-white shadow-md text-slate-500 hover:text-slate-800" aria-label="Close"><X className="w-5 h-5" /></button>
+      )}
       <div className="max-w-5xl mx-auto p-5 md:p-8">
         {!challenge && !error && <div className="flex justify-center py-24"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /></div>}
         {error && <p className="max-w-md mx-auto mt-16 text-center text-rose-600 bg-rose-50 rounded-xl p-4">{error}</p>}

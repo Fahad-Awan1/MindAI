@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useBackHandler } from '../hooks/useBackHandler';
 import { getErrorMessage, ChatHistoryItem, StreamOptions } from '../services/api';
 import { MarkdownMessage } from './MarkdownMessage';
 import { SpeakButton } from './SpeakButton';
@@ -83,11 +84,8 @@ export const TutorChat: React.FC<TutorChatProps> = ({ title, subtitle, icon, con
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Android back / Escape closes it
+  useBackHandler(onClose);
 
   const handleSend = (raw: string) => {
     const text = raw.trim();

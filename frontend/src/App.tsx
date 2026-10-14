@@ -18,7 +18,8 @@ import { Logo, LogoMark } from './components/Logo';
 import { SplashScreen, shouldShowSplash } from './components/SplashScreen';
 import { useLenis } from './motion/useLenis';
 import { useGlobalSpotlight, prefersReducedMotion } from './motion';
-import { closeTopDialog, onBackButton } from './services/platform';
+import { onBackButton } from './services/platform';
+import { handleBack } from './hooks/useBackHandler';
 
 // Mind maps pull in the large Mermaid library, so load that screen on demand
 const MindMapGenerator = lazy(() =>
@@ -108,12 +109,12 @@ const Workspace: React.FC = () => {
     goingBack.current = false;
     lastView.current = currentView;
   }, [currentView]);
-  const backState = useRef({ isSidebarOpen, showProfile });
-  backState.current = { isSidebarOpen, showProfile };
+  const backState = useRef({ isSidebarOpen });
+  backState.current = { isSidebarOpen };
   useEffect(() => onBackButton(() => {
     if (backState.current.isSidebarOpen) { setIsSidebarOpen(false); return true; }
-    if (backState.current.showProfile) { setShowProfile(false); return true; }
-    if (closeTopDialog()) return true;
+    // Open dialogs/sheets and screens that confirm before leaving (exam, quiz, room) register themselves
+    if (handleBack()) return true;
     const previous = viewHistory.current.pop();
     if (previous === undefined) return false;
     goingBack.current = true;

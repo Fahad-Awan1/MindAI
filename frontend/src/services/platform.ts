@@ -116,14 +116,6 @@ export const onBackButton = (handler: () => boolean) => {
   return () => { listener.then(l => l.remove()); };
 };
 
-/** An open dialog/menu gets closed with Escape (every modal in the app listens for it). */
-export const closeTopDialog = (): boolean => {
-  const open = document.querySelector('[role="dialog"], [aria-modal="true"], .dialog-panel');
-  if (!open) return false;
-  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  return true;
-};
 
 // "Install app" (web): Chrome offers it through beforeinstallprompt, which can fire before React mounts - keep it here
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };

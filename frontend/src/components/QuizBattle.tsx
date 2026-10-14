@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useBackHandler } from '../hooks/useBackHandler';
 import { LeaderboardRow, UserBrief } from '../types';
 import { initials } from '../auth/AuthContext';
 import { Loader2, Swords, Trophy, Check, X, Timer, Medal } from 'lucide-react';
@@ -65,6 +66,7 @@ const Leaderboard: React.FC<{ rows: LeaderboardRow[]; me: UserBrief; limit?: num
 /** Full-screen live quiz battle shown to everyone in the room. */
 export const QuizBattle: React.FC<QuizBattleProps> = ({ state, me, canCancel, onAnswer, onCancel, onClose }) => {
   const [now, setNow] = useState(Date.now());
+  useBackHandler(onClose);
 
   // Tick the countdown while a question is open
   useEffect(() => {
@@ -79,9 +81,14 @@ export const QuizBattle: React.FC<QuizBattleProps> = ({ state, me, canCancel, on
         <Swords className="w-5 h-5" />
         <span className="font-bold uppercase tracking-wider text-xs">Quiz battle</span>
       </div>
-      {state.phase !== 'end' && canCancel && (
-        <button onClick={onCancel} className="text-xs font-bold text-slate-400 hover:text-rose-600">Cancel battle</button>
-      )}
+      <div className="flex items-center gap-1">
+        {state.phase !== 'end' && canCancel && (
+          <button onClick={onCancel} className="px-2 py-2 text-xs font-bold text-slate-400 hover:text-rose-600">Cancel battle</button>
+        )}
+        {state.phase !== 'end' && (
+          <button onClick={onClose} className="px-2 py-2 text-xs font-bold text-slate-400 hover:text-slate-700" title="Hide - it opens again with the next question">Hide</button>
+        )}
+      </div>
     </div>
   );
 

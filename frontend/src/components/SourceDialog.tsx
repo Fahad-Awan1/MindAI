@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import { useBackHandler } from '../hooks/useBackHandler';
 import { Source } from '../types';
 import { BookOpen, FileText, X } from 'lucide-react';
 
@@ -11,11 +12,8 @@ interface SourceDialogProps {
 
 /** Shows the exact passage an answer cited. */
 export const SourceDialog: React.FC<SourceDialogProps> = ({ source, onClose, onOpenInReader }) => {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Android back / Escape closes it
+  useBackHandler(onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print" role="dialog" aria-modal="true" aria-label={`Source ${source.n}`}>

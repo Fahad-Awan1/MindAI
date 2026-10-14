@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useBackHandler } from '../hooks/useBackHandler';
 import { DocumentFile, InvitePreview, RoomSummary, Source } from '../types';
 import { roomsAPI, getErrorMessage } from '../services/api';
 import { RoomView } from './RoomView';
@@ -37,6 +38,7 @@ export const Rooms: React.FC<RoomsProps> = ({ myDocuments, onOpenInReader, invit
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [invite, setInvite] = useState<{ code: string; preview: InvitePreview | null; error: string | null } | null>(null);
+  useBackHandler(() => setInvite(null), !!invite);
 
   const loadRooms = () => {
     roomsAPI.list().then(setRooms).catch(err => setError(getErrorMessage(err, 'Failed to load your rooms.')));

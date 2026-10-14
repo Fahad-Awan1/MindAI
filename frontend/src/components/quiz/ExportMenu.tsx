@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useBackHandler } from '../../hooks/useBackHandler';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Download, FileText, Loader2, Printer, Table, Layers, GraduationCap, Gamepad2, ClipboardList, Copy, CircleDot } from 'lucide-react';
 import { downloadExport, ExportFormat, getErrorMessage } from '../../services/api';
@@ -59,6 +60,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({ setId, title, questions,
   const sheetRef = useRef<HTMLDivElement>(null);
   // Phones get a sheet from the bottom of the screen (a dropdown would run off the edge); larger screens a dropdown
   const [asSheet, setAsSheet] = useState(false);
+  useBackHandler(() => setOpen(false), open);
 
   useEffect(() => {
     if (!open) return;

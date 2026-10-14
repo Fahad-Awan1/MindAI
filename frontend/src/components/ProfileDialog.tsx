@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useBackHandler } from '../hooks/useBackHandler';
 import { useAuth, initials } from '../auth/AuthContext';
 import { authAPI, getErrorMessage } from '../services/api';
 import { X, Loader2, Check } from 'lucide-react';
@@ -16,11 +17,8 @@ export const ProfileDialog: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   const [savingPw, setSavingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Android back / Escape closes it
+  useBackHandler(onClose);
 
   if (!user) return null;
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useBackHandler } from '../../hooks/useBackHandler';
 import { AlertTriangle, CheckCircle2, Cloud, CloudOff, Maximize2, Minimize2, Send, Timer } from 'lucide-react';
 import { ExamAttempt, ExamPaperV2 } from '../../assessment/types';
 import { examsAPI } from '../../services/api';
@@ -33,6 +34,11 @@ export const ExamRoom: React.FC<ExamRoomProps> = ({ exam, attempt, onSubmit }) =
   const [section, setSection] = useState(exam.sections[0]?.id);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'offline'>('saved');
   const [confirming, setConfirming] = useState(false);
+  // Android back: close the submit dialog, or confirm before leaving (returning false lets the app go back)
+  useBackHandler(() => {
+    if (confirming) { setConfirming(false); return true; }
+    return window.confirm('Leave the exam? Your answers are saved, but the timer keeps running.') ? false : true;
+  });
   const [fullscreen, setFullscreen] = useState(false);
   const dirty = useRef(false);
   const submitted = useRef(false);

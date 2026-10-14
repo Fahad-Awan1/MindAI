@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useBackHandler } from '../../hooks/useBackHandler';
 import {
   ArrowLeft, ArrowRight, Check, CheckCircle2, Flag, Heart, HelpCircle, Lightbulb, Loader2, LogOut, Scissors, Send, Timer, XCircle, Zap, Brain,
 } from 'lucide-react';
@@ -31,6 +32,8 @@ const CONFIDENCE = [
 ];
 
 export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions, config, onFinish, onExit, onOpenSource }) => {
+  // Android back / Escape: same as the leave button (confirm first - answers so far aren't saved)
+  useBackHandler(() => { if (window.confirm('Leave this quiz? Your answers so far won\'t be saved.')) onExit(); });
   const { mode } = config;
   const instant = mode === 'practice' || mode === 'survival' || mode === 'adaptive';
   const canNavigate = mode === 'test' || mode === 'review';
