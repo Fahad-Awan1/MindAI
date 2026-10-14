@@ -61,7 +61,7 @@ export const ProfileDialog: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Profile">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm dialog-backdrop" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl dialog-panel max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl dialog-panel max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 pt-6">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold" style={{ background: user.avatar_color }}>

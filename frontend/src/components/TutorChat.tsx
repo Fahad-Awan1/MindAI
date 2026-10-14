@@ -98,14 +98,14 @@ export const TutorChat: React.FC<TutorChatProps> = ({ title, subtitle, icon, con
     <div className="fixed inset-0 z-50 flex justify-end no-print" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm dialog-backdrop" onClick={onClose} />
       <div className="relative w-full max-w-xl h-full bg-slate-50 shadow-2xl flex flex-col drawer-in">
-        <div className="flex items-center justify-between gap-3 px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-primary-600 text-white flex items-center justify-center shadow-md">
               {icon}
             </div>
-            <div>
-              <h2 className="font-bold text-slate-900 leading-tight">{title}</h2>
-              <p className="text-xs text-slate-400">{subtitle}</p>
+            <div className="min-w-0">
+              <h2 className="font-bold text-slate-900 leading-tight truncate">{title}</h2>
+              <p className="text-xs text-slate-400 truncate">{subtitle}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
@@ -113,13 +113,13 @@ export const TutorChat: React.FC<TutorChatProps> = ({ title, subtitle, icon, con
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5" data-lenis-prevent>
           {context}
 
           {messages.map((m, i) => (
             m.role === 'user' ? (
               <div key={i} className="flex justify-end msg-in">
-                <p className="max-w-[85%] bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm whitespace-pre-wrap shadow-md shadow-indigo-500/20 leading-relaxed">{m.text}</p>
+                <p className="max-w-[85%] min-w-0 break-anywhere bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm whitespace-pre-wrap shadow-md shadow-indigo-500/20 leading-relaxed">{m.text}</p>
               </div>
             ) : (
               <div key={i} className="flex gap-3 group msg-in">
@@ -158,7 +158,7 @@ export const TutorChat: React.FC<TutorChatProps> = ({ title, subtitle, icon, con
             onStop={() => abortRef.current?.abort()}
             placeholder={placeholder ?? 'Ask a follow-up question...'}
             size="sm"
-            autoFocus
+            autoFocus={!window.matchMedia('(pointer: coarse)').matches}
           />
         </div>
       </div>

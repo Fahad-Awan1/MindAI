@@ -208,21 +208,21 @@ export const AudioOverview: React.FC<AudioOverviewProps> = ({ documents, initial
   // Player
   if (overview) {
     return (
-      <div className="max-w-3xl mx-auto p-6 md:p-10 pb-24 animate-fade-in">
+      <div className="max-w-3xl mx-auto p-4 md:p-10 pb-24 animate-fade-in">
         <button onClick={() => { stopAll(); setOverview(null); }} className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-slate-700 mb-6">
           <ArrowLeft className="w-4 h-4" /> All overviews
         </button>
 
-        <div className="relative bg-slate-900 text-white rounded-[2rem] p-8 overflow-hidden shadow-2xl mb-6">
+        <div className="relative bg-slate-900 text-white rounded-[2rem] p-5 md:p-8 overflow-hidden shadow-2xl mb-6">
           <div className="absolute -top-20 -right-16 w-72 h-72 bg-rose-500 rounded-full blur-[90px] opacity-30" />
           <div className="absolute -bottom-24 -left-10 w-72 h-72 bg-indigo-500 rounded-full blur-[90px] opacity-25" />
           <div className="relative z-10">
             <p className="text-xs font-bold uppercase tracking-widest text-rose-300 mb-2 flex items-center gap-2">
               <Headphones className="w-4 h-4" /> Audio overview · {overview.document_title}
             </p>
-            <h2 className="text-3xl font-display font-bold leading-tight mb-6">{overview.data.title}</h2>
+            <h2 className="text-2xl md:text-3xl font-display font-bold leading-tight mb-6 break-anywhere">{overview.data.title}</h2>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 md:gap-4">
               <button onClick={() => playFrom(Math.max(current - 1, 0))} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors" aria-label="Previous line">
                 <SkipBack className="w-5 h-5" />
               </button>
@@ -232,9 +232,9 @@ export const AudioOverview: React.FC<AudioOverviewProps> = ({ documents, initial
               <button onClick={() => playFrom(Math.min(current + 1, lines.length - 1))} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors" aria-label="Next line">
                 <SkipForward className="w-5 h-5" />
               </button>
-              <div className="ml-auto flex items-center gap-1 bg-white/10 rounded-full p-1" role="group" aria-label="Playback speed">
+              <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-center gap-1 bg-white/10 rounded-full p-1" role="group" aria-label="Playback speed">
                 {SPEEDS.map(s => (
-                  <button key={s} onClick={() => changeSpeed(s)} className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${speed === s ? 'bg-white text-slate-900' : 'text-white/70 hover:text-white'}`}>
+                  <button key={s} onClick={() => changeSpeed(s)} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${speed === s ? 'bg-white text-slate-900' : 'text-white/70 hover:text-white'}`}>
                     {s}x
                   </button>
                 ))}
@@ -305,8 +305,8 @@ export const AudioOverview: React.FC<AudioOverviewProps> = ({ documents, initial
 
   // Setup
   return (
-    <div className="max-w-5xl mx-auto p-8 pb-20 animate-fade-in">
-      <div className="flex flex-col items-center text-center mt-10">
+    <div className="max-w-5xl mx-auto p-4 md:p-8 pb-20 animate-fade-in">
+      <div className="flex flex-col items-center text-center mt-4 md:mt-10">
         <ToolHero
           icon={Headphones}
           gradient="from-rose-400 to-fuchsia-600"

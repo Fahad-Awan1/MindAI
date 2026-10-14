@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
       ></div>
 
       {/* Sidebar */}
-      <div className={`no-print group/sidebar fixed inset-y-0 left-0 z-50 w-72 h-screen bg-[#0b0a1a] text-white flex-shrink-0 shadow-2xl transition-[transform,width] duration-700 ease-out-expo md:relative md:z-30 md:translate-x-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${rail ? 'md:w-[5.5rem]' : ''}`}>
+      <div className={`no-print group/sidebar fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] md:max-w-none pb-[env(safe-area-inset-bottom)] bg-[#0b0a1a] text-white flex-shrink-0 shadow-2xl transition-[transform,width] duration-700 ease-out-expo md:relative md:z-30 md:translate-x-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${rail ? 'md:w-[5.5rem]' : ''}`}>
         {/* Desktop: collapse / expand handle on the top-right edge (outside the clipped content) */}
         <button
           onClick={toggleRail}

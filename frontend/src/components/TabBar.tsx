@@ -21,6 +21,11 @@ const TABS = [
 export const TabBar: React.FC<TabBarProps> = ({ currentView, onChangeView, menuOpen }) => {
   // Hide while typing so the bar doesn't ride up on top of the keyboard
   const [typing, setTyping] = useState(false);
+  // Lets the page drop the space it keeps for this bar while the keyboard is up (see .app-main in index.css)
+  useEffect(() => {
+    document.documentElement.classList.toggle('typing', typing);
+    return () => document.documentElement.classList.remove('typing');
+  }, [typing]);
   useEffect(() => {
     const isField = (el: EventTarget | null) =>
       el instanceof HTMLElement && (el.tagName === 'TEXTAREA' || el.isContentEditable ||
@@ -34,7 +39,7 @@ export const TabBar: React.FC<TabBarProps> = ({ currentView, onChangeView, menuO
 
   return (
     <nav aria-label="Main"
-      className={`no-print md:hidden fixed bottom-0 inset-x-0 z-30 h-16 bg-white/90 backdrop-blur-xl border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(15,23,42,0.06)] grid grid-cols-5 transition-transform duration-300 ease-out-expo ${typing ? 'translate-y-full' : 'translate-y-0'}`}>
+      className={`no-print md:hidden fixed bottom-0 inset-x-0 z-30 h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-white/90 backdrop-blur-xl border-t border-slate-200/70 shadow-[0_-4px_20px_rgba(15,23,42,0.06)] grid grid-cols-5 transition-transform duration-300 ease-out-expo ${typing ? 'translate-y-full' : 'translate-y-0'}`}>
       {TABS.map(tab => {
         const active = !menuOpen && currentView === tab.view;
         return (

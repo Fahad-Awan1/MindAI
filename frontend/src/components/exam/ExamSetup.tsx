@@ -133,7 +133,7 @@ export const ExamSetup: React.FC<ExamSetupProps> = ({ documents, primaryDocId, o
               <button onClick={() => abortRef.current?.abort()} className="text-xs font-bold text-slate-400 hover:text-rose-600 flex items-center gap-1 ml-auto mt-1"><Square className="w-3 h-3 fill-current" /> Cancel</button>
             </div>
           </div>
-          <ul className="mt-6 space-y-2 max-h-[55vh] overflow-y-auto" data-lenis-prevent>
+          <ul className="mt-6 space-y-2 max-h-[55dvh] overflow-y-auto" data-lenis-prevent>
             {built.map(q => (
               <li key={q.id} className="msg-in flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
                 <span className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-500 flex-shrink-0">{q.section_id}</span>

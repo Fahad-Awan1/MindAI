@@ -43,6 +43,13 @@ export const ConceptGraph: React.FC<ConceptGraphProps> = ({ documentCount, onAsk
   const [error, setError] = useState<string | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Below the large layout the details panel sits under the graph: bring it into view when a concept is picked
+  const detailsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!selectedId || window.matchMedia('(min-width: 1024px)').matches) return;
+    const id = window.setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    return () => window.clearTimeout(id);
+  }, [selectedId]);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'graph' | 'list'>('graph');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -296,9 +303,9 @@ export const ConceptGraph: React.FC<ConceptGraphProps> = ({ documentCount, onAsk
             </div>
           )}
           {view === 'graph' ? (
-            <div ref={containerRef} className="h-[620px] w-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:18px_18px]" role="img" aria-label="Concept graph. Use the List view for an accessible version." />
+            <div ref={containerRef} className="h-[60dvh] min-h-[320px] md:h-[620px] w-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:18px_18px]" role="img" aria-label="Concept graph. Use the List view for an accessible version." />
           ) : (
-            <div className="max-h-[620px] overflow-y-auto">
+            <div className="max-h-[60dvh] md:max-h-[620px] overflow-y-auto" data-lenis-prevent>
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 sticky top-0">
                   <tr>
@@ -325,12 +332,12 @@ export const ConceptGraph: React.FC<ConceptGraphProps> = ({ documentCount, onAsk
         </div>
 
         {/* Details panel */}
-        <aside className="lg:w-80 flex-shrink-0">
+        <aside ref={detailsRef} className="lg:w-80 flex-shrink-0 scroll-mt-20">
           {selected ? (
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 lg:sticky lg:top-4 animate-scale-in">
               <div className="flex items-start justify-between gap-3 mb-3">
-                <h2 className="text-xl font-display font-bold text-slate-900">{selected.name}</h2>
-                <button onClick={() => setSelectedId(null)} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
+                <h2 className="text-xl font-display font-bold text-slate-900 min-w-0 break-anywhere">{selected.name}</h2>
+                <button onClick={() => setSelectedId(null)} className="p-2 -m-1 rounded-lg flex-shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               </div>

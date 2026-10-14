@@ -85,3 +85,18 @@ html, body { overflow-x: hidden; overscroll-behavior-x: none; }
 /* Phone app: when Android doesn't shrink the page for the on-screen keyboard, leave room for it ourselves */
 html.keyboard-open body { padding-bottom: var(--keyboard-inset, 0px); }
 html.keyboard-open .app-shell { height: calc(100dvh - var(--keyboard-inset, 0px)) !important; }
+/* ...and full-screen dialogs (tutor, profile, battle) end above the keyboard too */
+html.keyboard-open [role="dialog"].fixed { bottom: var(--keyboard-inset, 0px); }
+
+/* Phones: the bottom tab bar slides away while typing, so the page doesn't keep a gap for it */
+@media (max-width: 767px) {
+  html.typing .app-main { padding-bottom: 0; }
+}
+
+/* Touch screens have no hover: actions that appear on hover (delete, reply, copy...) are always visible */
+@media (hover: none) {
+  .hover-reveal { opacity: 1 !important; }
+}
+
+/* Long words, URLs, file names and e-mails wrap instead of pushing their container off screen */
+.break-anywhere { overflow-wrap: anywhere; word-break: normal; }

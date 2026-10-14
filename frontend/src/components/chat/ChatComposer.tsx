@@ -117,6 +117,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     onSubmit(text);
   };
 
+  // Phones and tablets: Enter makes a new line (their keyboards have no Shift+Enter) and the button sends
+  const touchKeyboard = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (mention && matches.length) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setActive(i => (i + 1) % matches.length); return; }
@@ -124,7 +127,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(matches[active]); return; }
     }
     if (mention && e.key === 'Escape') { e.preventDefault(); setMention(null); return; }
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && !touchKeyboard) {
       e.preventDefault();
       submit();
     }
@@ -157,6 +160,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             disabled={disabled}
             maxLength={maxLength}
             aria-label="Message"
+            enterKeyHint={touchKeyboard ? 'enter' : 'send'}
             data-lenis-prevent
             className={`flex-1 min-w-0 resize-none bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-slate-800 placeholder-slate-400 leading-6 max-h-[200px] ${small ? 'text-sm py-2' : 'text-[15px] py-2.5'} disabled:opacity-60`}
           />

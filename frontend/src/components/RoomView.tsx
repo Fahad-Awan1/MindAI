@@ -103,6 +103,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   const [quizCount, setQuizCount] = useState(5);
   const [openSource, setOpenSource] = useState<Source | null>(null);
   const [showPanel, setShowPanel] = useState(false);
+  const [activeMsgId, setActiveMsgId] = useState<string | null>(null);
   useBackHandler(() => {
     if (showPanel) setShowPanel(false);
     else if (showSettings) setShowSettings(false);
@@ -406,13 +407,13 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   };
 
   const messageActions = (m: RoomMessage, handle: string | null, mine: boolean) => (
-    <div className={`absolute -top-3 ${mine ? 'left-2' : 'right-2'} flex items-center gap-0.5 p-0.5 rounded-lg bg-white border border-slate-200 shadow-md opacity-0 translate-y-1 group-hover/msg:opacity-100 group-hover/msg:translate-y-0 transition-all duration-300 ease-out-expo z-10`}>
+    <div onClick={e => e.stopPropagation()} className={`absolute -top-3 ${mine ? 'left-2' : 'right-2'} flex items-center gap-0.5 p-0.5 rounded-lg bg-white border border-slate-200 shadow-md ${activeMsgId === m.id ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'} group-hover/msg:opacity-100 group-hover/msg:translate-y-0 transition-all duration-300 ease-out-expo z-10`}>
       {handle && (
-        <button onClick={() => replyTo(handle)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" aria-label={`Reply to ${handle}`} title={`Reply to @${handle}`}>
+        <button onClick={() => { replyTo(handle); setActiveMsgId(null); }} className="p-2 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" aria-label={`Reply to ${handle}`} title={`Reply to @${handle}`}>
           <Reply className="w-3.5 h-3.5" />
         </button>
       )}
-      <button onClick={() => copyText(m)} className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" aria-label="Copy message" title="Copy">
+      <button onClick={() => copyText(m)} className="p-2 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" aria-label="Copy message" title="Copy">
         {copiedId === m.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
     </div>
@@ -527,11 +528,11 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               <span className="font-normal text-slate-400">{time(m.created_at)}</span>
             </p>
           )}
-          <div className="relative group/msg">
+          <div className="relative group/msg max-w-full min-w-0" onClick={() => setActiveMsgId(id => (id === m.id ? null : m.id))}>
             {messageActions(m, mine ? null : handle, mine)}
             <p
               title={time(m.created_at)}
-              className={`px-4 py-2.5 rounded-2xl whitespace-pre-wrap break-words text-[15px] leading-relaxed transition-shadow duration-300
+              className={`px-4 py-2.5 rounded-2xl whitespace-pre-wrap break-anywhere text-[15px] leading-relaxed transition-shadow duration-300
                 ${mine
                   ? `bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 ${continued ? 'rounded-tr-md' : 'rounded-tr-sm'}`
                   : `bg-white border text-slate-800 shadow-sm hover:shadow-md ${continued ? 'rounded-tl-md' : 'rounded-tl-sm'} ${forMe ? 'border-amber-300 ring-4 ring-amber-100' : 'border-slate-100'}`}`}
@@ -577,7 +578,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               {m.id !== me.id && (
                 <button
                   onClick={() => { replyTo(handles.get(m.id) ?? m.name); setShowPanel(false); }}
-                  className="p-1 rounded-md text-slate-300 hover:text-indigo-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  className="hover-reveal p-2 rounded-md text-slate-300 hover:text-indigo-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                   aria-label={`Mention ${m.name}`}
                   title={`Mention @${handles.get(m.id)}`}
                 >
@@ -587,7 +588,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               {isOwner && m.id !== me.id && (
                 <button
                   onClick={() => window.confirm(`Remove ${m.name} from the room?`) && runAction(() => roomsAPI.removeMember(roomId, m.id), 'Could not remove the member.')}
-                  className="p-1 rounded-md text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  className="hover-reveal p-2 rounded-md text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 focus:opacity-100"
                   aria-label={`Remove ${m.name}`}
                 >
                   <X className="w-4 h-4" />
@@ -614,8 +615,8 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               </span>
               {(d.mine || isOwner) && (
                 <button
-                  onClick={() => runAction(async () => setDetail(await roomsAPI.unshareDocument(roomId, d.id)), 'Could not remove the document.')}
-                  className="p-1 rounded-md text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  onClick={() => window.confirm(`Stop sharing "${d.title}" with the room?`) && runAction(async () => setDetail(await roomsAPI.unshareDocument(roomId, d.id)), 'Could not remove the document.')}
+                  className="hover-reveal p-2 -m-1 rounded-md text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 focus:opacity-100"
                   aria-label={`Stop sharing ${d.title}`}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -718,6 +719,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
           <button onClick={() => setShowSettings(v => !v)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Room settings" aria-expanded={showSettings}>
             <Settings className="w-5 h-5" />
           </button>
+          {showSettings && detail && <div className="fixed inset-0 z-20" onClick={() => setShowSettings(false)} aria-hidden="true" />}
           {showSettings && detail && (
             <div className="absolute right-0 top-11 z-30 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 text-sm dialog-panel" onMouseLeave={() => setShowSettings(false)}>
               {isOwner ? (
@@ -835,10 +837,11 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
           </div>
         </div>
 
-        {/* Details panel */}
-        <aside className={`${showPanel ? 'fixed inset-y-0 right-0 z-40 w-80 shadow-2xl' : 'hidden'} lg:static lg:block lg:w-80 lg:shadow-none flex-shrink-0 bg-white border-l border-slate-200 overflow-y-auto p-5`}>
+        {/* Details panel (a sheet with a backdrop on smaller screens) */}
+        {showPanel && <div className="lg:hidden fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[2px] animate-fade-in" onClick={() => setShowPanel(false)} aria-hidden="true" />}
+        <aside className={`${showPanel ? 'fixed inset-y-0 right-0 z-40 w-[min(20rem,88vw)] shadow-2xl' : 'hidden'} lg:static lg:block lg:w-80 lg:shadow-none flex-shrink-0 bg-white border-l border-slate-200 overflow-y-auto p-5`}>
           <div className="lg:hidden flex justify-end mb-2">
-            <button onClick={() => setShowPanel(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100" aria-label="Close"><X className="w-5 h-5" /></button>
+            <button onClick={() => setShowPanel(false)} className="p-2.5 -m-1 rounded-lg text-slate-400 hover:bg-slate-100" aria-label="Close"><X className="w-5 h-5" /></button>
           </div>
           {sidePanel}
         </aside>

@@ -210,7 +210,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                         <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
                     </div>
                     
-                    <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-tight opacity-75">
+                    <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-tight break-anywhere opacity-75">
                         {file.name}
                     </h3>
                     
@@ -254,7 +254,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onUpload,
                    </Tooltip>
                 </div>
                 
-                <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors relative z-10">
+                <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-tight break-anywhere group-hover:text-indigo-600 transition-colors relative z-10">
                     {doc.title}
                 </h3>
                 

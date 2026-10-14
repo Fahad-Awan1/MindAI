@@ -156,7 +156,7 @@ export const QuizBattle: React.FC<QuizBattleProps> = ({ state, me, canCancel, on
                 <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${chosen && !reveal ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}`}>
                   {LETTERS[i]}
                 </span>
-                <span className="flex-1">{option}</span>
+                <span className="flex-1 min-w-0 break-anywhere">{option}</span>
                 {reveal && i === reveal.correct_index && <Check className="w-5 h-5 text-emerald-600" />}
                 {reveal && chosen && i !== reveal.correct_index && <X className="w-5 h-5 text-rose-600" />}
                 {reveal && <span className="text-xs font-bold text-slate-400 tabular-nums">{reveal.counts[i]}</span>}
@@ -197,7 +197,7 @@ export const QuizBattle: React.FC<QuizBattleProps> = ({ state, me, canCancel, on
         <p className="text-slate-500 mb-6">Final standings</p>
         <div className="flex items-end justify-center gap-3 mb-6">
           {[1, 0, 2].map(pos => podium[pos] && (
-            <div key={podium[pos].user.id} className="flex flex-col items-center gap-2 w-24">
+            <div key={podium[pos].user.id} className="flex flex-col items-center gap-2 w-20 sm:w-24 min-w-0">
               <Avatar user={podium[pos].user} size="w-12 h-12 text-sm" />
               <span className="text-sm font-bold text-slate-800 truncate max-w-full">{podium[pos].user.name}</span>
               <div className={`w-full rounded-t-xl flex flex-col items-center justify-start pt-2 text-white font-bold
@@ -217,7 +217,7 @@ export const QuizBattle: React.FC<QuizBattleProps> = ({ state, me, canCancel, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Quiz battle">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in" />
-      <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl p-6 md:p-8 dialog-panel">
+      <div className="relative w-full max-w-2xl max-h-[92dvh] overflow-y-auto bg-white rounded-3xl shadow-2xl p-6 md:p-8 dialog-panel">
         {header}
         {body}
       </div>

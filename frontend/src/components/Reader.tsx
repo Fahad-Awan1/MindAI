@@ -118,8 +118,23 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
     return () => { cancelled = true; };
   }, [docId]);
 
-  // Hide the selection toolbar when scrolling (its position would be stale)
+  // Touch screens: long-press / drag-handle selection fires no mouseup, so follow the selection itself
+  const touch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
   useEffect(() => {
+    if (!touch) return;
+    let timer: number | undefined;
+    const onChange = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => readSelection(), 350);
+    };
+    document.addEventListener('selectionchange', onChange);
+    return () => { window.clearTimeout(timer); document.removeEventListener('selectionchange', onChange); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [touch, segments.length]);
+
+  // Hide the floating selection toolbar when scrolling (its position would be stale; on touch it's docked)
+  useEffect(() => {
+    if (touch) return;
     const container = articleRef.current?.closest('.overflow-y-auto');
     const hide = () => setSelection(null);
     container?.addEventListener('scroll', hide, { passive: true });
@@ -132,7 +147,7 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  const handleMouseUp = () => {
+  const readSelection = () => {
     const sel = window.getSelection();
     const text = sel?.toString().trim() ?? '';
     if (!sel || sel.rangeCount === 0 || text.length < 3 || !articleRef.current?.contains(sel.anchorNode)) {
@@ -226,7 +241,7 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
       {/* Document */}
       <article
         ref={articleRef}
-        onMouseUp={handleMouseUp}
+        onMouseUp={readSelection}
         key={docId}
         className="bg-white rounded-3xl border border-slate-100 shadow-sm px-6 md:px-12 py-10 font-serif text-[17px] leading-8 text-slate-800 selection:bg-indigo-100 animate-rise"
         style={{ animationDelay: '250ms', animationFillMode: 'backwards' }}
@@ -254,8 +269,10 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
       {/* Selection toolbar */}
       {selection && (
         <div
-          className="fixed z-40 -translate-x-1/2 -translate-y-full flex items-center gap-1 p-1.5 rounded-xl bg-slate-900 text-white shadow-2xl animate-scale-in font-sans"
-          style={{ top: selection.top, left: selection.left }}
+          className={touch
+            ? 'fixed z-40 inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-6 grid grid-cols-2 gap-1 p-1.5 rounded-2xl bg-slate-900 text-white shadow-2xl animate-slide-up font-sans'
+            : 'fixed z-40 -translate-x-1/2 -translate-y-full flex items-center gap-1 p-1.5 rounded-xl bg-slate-900 text-white shadow-2xl animate-scale-in font-sans'}
+          style={touch ? undefined : { top: selection.top, left: selection.left }}
           onMouseDown={e => e.preventDefault()}
           role="toolbar"
           aria-label="Selection actions"
@@ -269,7 +286,7 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
             <button
               key={action}
               onClick={() => runAction(action)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/15 transition-colors whitespace-nowrap"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-white/15 active:bg-white/20 transition-colors whitespace-nowrap"
             >
               <Icon className="w-4 h-4" /> {label}
             </button>
@@ -279,7 +296,7 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
 
       {/* Working indicator / toast */}
       {(busy || toast) && (
-        <div className={`fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl font-sans text-sm animate-slide-up
+        <div className={`fixed bottom-24 md:bottom-6 inset-x-4 mx-auto w-fit max-w-[calc(100vw-2rem)] z-40 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl font-sans text-sm animate-slide-up
           ${toast?.isError ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'}`} role="status">
           {busy ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> {busy === 'quiz' ? 'Writing your quiz...' : 'Making flashcards...'}</>

@@ -450,13 +450,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
       <div className="absolute bottom-0 left-0 right-0 px-4 md:px-6 pb-3 pt-8 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent z-20 pointer-events-none">
         <div className="max-w-4xl mx-auto pointer-events-auto">
           {showStarters && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 stagger">
+            <div className="flex sm:grid sm:grid-cols-2 gap-2 mb-3 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 snap-x stagger">
               {STARTERS.map(({ icon: Icon, text }) => (
                 <button
                   key={text}
                   type="button"
                   onClick={() => { setInput(text); setFocusKey(k => k + 1); }}
-                  className="group flex items-center gap-3 text-left px-4 py-3 rounded-2xl bg-white/90 backdrop-blur border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-indigo-200 hover:-translate-y-0.5 transition-all duration-500 ease-out-expo"
+                  className="group flex-shrink-0 w-[15rem] sm:w-auto snap-start flex items-center gap-3 text-left px-4 py-3 rounded-2xl bg-white/90 backdrop-blur border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-indigo-200 hover:-translate-y-0.5 transition-all duration-500 ease-out-expo"
                 >
                   <span className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6 ${isAllDocs ? 'bg-fuchsia-50 text-fuchsia-600' : 'bg-indigo-50 text-indigo-600'}`}>
                     <Icon className="w-4 h-4" />

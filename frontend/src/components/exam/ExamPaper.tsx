@@ -211,7 +211,7 @@ export const ExamPaper: React.FC<ExamPaperProps> = ({ setId, exam, onStart, onOp
       </div>
 
       {/* The paper */}
-      <div className={`print-content bg-white w-full max-w-[210mm] min-h-[297mm] p-[12mm] md:p-[18mm] shadow-2xl text-slate-900 mx-auto font-serif relative animate-rise ${editing ? 'ring-2 ring-sky-300 ring-offset-4' : ''}`} style={{ animationDelay: '150ms', animationFillMode: 'backwards' }}>
+      <div className={`print-content bg-white w-full max-w-[210mm] md:min-h-[297mm] p-4 sm:p-[12mm] md:p-[18mm] shadow-2xl text-slate-900 mx-auto font-serif relative animate-rise ${editing ? 'ring-2 ring-sky-300 ring-offset-4' : ''}`} style={{ animationDelay: '150ms', animationFillMode: 'backwards' }}>
         {header ? (
           <PaperHeader header={header} editing={editing} duration={view.duration} totalMarks={exam.total_marks} instructions={view.instructions}
             onChange={h => update({ header: h })} onInstructionsChange={lines => update({ instructions: lines })} onError={setError} />
@@ -221,11 +221,11 @@ export const ExamPaper: React.FC<ExamPaperProps> = ({ setId, exam, onStart, onOp
               {editing ? (
                 <input value={draft.title} onChange={e => update({ title: e.target.value })} className="w-full text-center text-2xl md:text-3xl font-bold uppercase tracking-wide bg-transparent border-0 border-b border-dashed border-sky-300 focus:ring-0 focus:border-sky-600" />
               ) : <h1 className="text-2xl md:text-3xl font-bold mb-2 uppercase tracking-wide">{exam.title}</h1>}
-              <div className="flex justify-between text-base md:text-lg italic mt-4 font-semibold">
+              <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 text-base md:text-lg italic mt-4 font-semibold">
                 <span>Time allowed: {view.duration} minutes</span>
                 <span>Maximum marks: {exam.total_marks}</span>
               </div>
-              <div className="flex justify-between text-sm md:text-base mt-4 pt-4 border-t border-slate-200">
+              <div className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-sm md:text-base mt-4 pt-4 border-t border-slate-200">
                 <span>Name: ______________________</span>
                 <span>Date: ______________________</span>
               </div>
@@ -280,12 +280,12 @@ export const ExamPaper: React.FC<ExamPaperProps> = ({ setId, exam, onStart, onOp
                       <p className="text-[17px] leading-relaxed mb-3"><span className="font-bold mr-2">{header ? `Q # ${groupLabel(group)}.` : `${groupLabel(group)}.`}</span>{group[0].parent_stem}</p>
                     )}
                     {group.map(q => (
-                      <div key={q.id} className={`${q.parent_stem ? 'pl-6 mb-3' : ''} ${editing ? 'rounded-xl -mx-3 px-3 py-2 hover:bg-sky-50/50 transition-colors' : ''}`}>
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex gap-2 flex-1">
+                      <div key={q.id} className={`${q.parent_stem ? 'pl-3 sm:pl-6 mb-3' : ''} ${editing ? 'rounded-xl -mx-3 px-3 py-2 hover:bg-sky-50/50 transition-colors' : ''}`}>
+                        <div className="flex flex-col sm:flex-row sm:justify-between items-start gap-1 sm:gap-4">
+                          <div className="flex gap-2 flex-1 min-w-0 w-full">
                             <span className="font-bold whitespace-nowrap">{q.parent_stem ? `(${(q.label || '').match(/\((.)\)/)?.[1] || ''})` : header ? `Q # ${q.label}.` : `${q.label}.`}</span>
-                            <div className="flex-1">
-                              <p className="text-[17px] leading-relaxed whitespace-pre-wrap">{q.question}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[17px] leading-relaxed whitespace-pre-wrap break-anywhere">{q.question}</p>
                               {q.type === 'mcq' && (
                                 <ol className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[15px]">
                                   {(q.options || []).map((o, i) => <li key={i}><span className="font-bold mr-1.5">{String.fromCharCode(65 + i)})</span>{o}</li>)}
@@ -316,7 +316,7 @@ export const ExamPaper: React.FC<ExamPaperProps> = ({ setId, exam, onStart, onOp
                               )}
                             </div>
                           </div>
-                          <span className="font-bold whitespace-nowrap">{header ? `(${q.marks} Marks)` : `[${q.marks}]`}</span>
+                          <span className="font-bold whitespace-nowrap self-end sm:self-auto">{header ? `(${q.marks} Marks)` : `[${q.marks}]`}</span>
                         </div>
                         {editing && (
                           <div className="mt-2 pl-7">

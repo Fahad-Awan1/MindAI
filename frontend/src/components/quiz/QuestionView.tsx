@@ -80,7 +80,7 @@ const ChoiceView: React.FC<QuestionViewProps & { multi: boolean }> = ({ question
               ${isSel ? 'bg-primary-600 border-primary-600 text-white' : 'border-slate-200 text-slate-400 group-hover/opt:border-primary-300'}`}>
               {multi ? (isSel ? <Check className="w-4 h-4" /> : letter(i)) : letter(i)}
             </span>
-            <span className="flex-1">{opt}</span>
+            <span className="flex-1 min-w-0 break-anywhere">{opt}</span>
             {state === 'right' && <Check className="w-5 h-5 text-emerald-600 animate-pop" />}
             {state === 'wrong' && <X className="w-5 h-5 text-rose-500 animate-pop" />}
             {state === 'missed' && <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Missed</span>}
@@ -162,10 +162,10 @@ const MatchingView: React.FC<QuestionViewProps> = ({ question, value, onChange, 
                 ${active === li ? 'border-primary-500 bg-primary-50 shadow-md' : ok === true ? 'border-emerald-400 bg-emerald-50' : ok === false ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white hover:border-primary-300'}`}
             >
               <span className={`w-3 h-3 rounded-full flex-shrink-0 ${ri >= 0 ? RIGHT_COLORS[ri % RIGHT_COLORS.length] : 'bg-slate-200'}`} />
-              <span className="flex-1">{item}</span>
+              <span className="flex-1 min-w-0 break-anywhere">{item}</span>
               {ri >= 0 && !reveal && (
-                <span onClick={e => { e.stopPropagation(); const next = [...chosen]; next[li] = -1; onChange(next); }} className="p-1 rounded-md text-slate-300 hover:text-rose-500" title="Unlink">
-                  <Unlink className="w-3.5 h-3.5" />
+                <span role="button" aria-label="Unlink" onClick={e => { e.stopPropagation(); const next = [...chosen]; next[li] = -1; onChange(next); }} className="p-2 -m-1 rounded-lg text-slate-300 hover:text-rose-500 flex-shrink-0" title="Unlink">
+                  <Unlink className="w-4 h-4" />
                 </span>
               )}
               {reveal && ok === false && <span className="text-xs font-semibold text-emerald-700">→ {right[truth.get(li) ?? 0]}</span>}
@@ -189,7 +189,7 @@ const MatchingView: React.FC<QuestionViewProps> = ({ question, value, onChange, 
                 ${usedBy >= 0 ? 'border-slate-300 bg-slate-50' : 'border-slate-200 bg-white'} ${active !== null && !disabled ? 'hover:border-primary-400 hover:-translate-y-0.5 cursor-pointer' : ''}`}
             >
               <span className={`w-3 h-3 rounded-full flex-shrink-0 ${RIGHT_COLORS[ri % RIGHT_COLORS.length]} ${usedBy >= 0 ? '' : 'opacity-30'}`} />
-              <span className="flex-1">{item}</span>
+              <span className="flex-1 min-w-0 break-anywhere">{item}</span>
             </button>
           );
         })}
@@ -233,16 +233,16 @@ const OrderingView: React.FC<QuestionViewProps> = ({ question, value, onChange, 
               if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); move(pos, -1); }
               if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); move(pos, 1); }
             }}
-            className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 bg-white font-medium transition-all duration-500 ease-out-expo focus:outline-none focus:ring-4 focus:ring-primary-100
+            className={`flex items-center gap-3 pl-3 pr-2 sm:px-4 py-2.5 sm:py-3 rounded-2xl border-2 bg-white font-medium transition-all duration-500 ease-out-expo focus:outline-none focus:ring-4 focus:ring-primary-100
               ${ok === true ? 'border-emerald-400 bg-emerald-50' : ok === false ? 'border-rose-300 bg-rose-50' : 'border-slate-200'}`}
           >
             <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center flex-shrink-0">{pos + 1}</span>
-            <span className="flex-1">{items[itemIndex]}</span>
+            <span className="flex-1 min-w-0 break-anywhere">{items[itemIndex]}</span>
             {reveal && ok === false && <span className="text-xs font-semibold text-emerald-700">should be #{itemIndex + 1}</span>}
             {!disabled && (
-              <span className="flex flex-col">
-                <button type="button" onClick={() => move(pos, -1)} disabled={pos === 0} className="p-0.5 rounded text-slate-400 hover:text-primary-600 disabled:opacity-20" aria-label="Move up"><ArrowUp className="w-4 h-4" /></button>
-                <button type="button" onClick={() => move(pos, 1)} disabled={pos === order.length - 1} className="p-0.5 rounded text-slate-400 hover:text-primary-600 disabled:opacity-20" aria-label="Move down"><ArrowDown className="w-4 h-4" /></button>
+              <span className="flex flex-shrink-0 -mr-2">
+                <button type="button" onClick={() => move(pos, -1)} disabled={pos === 0} className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 active:bg-primary-100 disabled:opacity-20" aria-label="Move up"><ArrowUp className="w-5 h-5" /></button>
+                <button type="button" onClick={() => move(pos, 1)} disabled={pos === order.length - 1} className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-primary-600 hover:bg-primary-50 active:bg-primary-100 disabled:opacity-20" aria-label="Move down"><ArrowDown className="w-5 h-5" /></button>
               </span>
             )}
           </li>
@@ -265,14 +265,14 @@ const TextAnswerView: React.FC<QuestionViewProps & { multiline: boolean; placeho
         className="w-full rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-[15px] leading-relaxed focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-colors"
       />
     ) : (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <input
           value={(value as string) ?? ''}
           onChange={e => onChange(e.target.value)}
           disabled={disabled}
           inputMode="decimal"
           placeholder={placeholder}
-          className="w-56 rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-lg font-semibold focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-colors"
+          className="w-full max-w-[14rem] min-w-0 rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-lg font-semibold focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-colors"
         />
         {suffix && <span className="text-slate-500 font-semibold">{suffix}</span>}
       </div>

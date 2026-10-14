@@ -102,7 +102,7 @@ export const SavedSets: React.FC<SavedSetsProps> = ({ kind, documentId, onOpen, 
                   <Tooltip content="Delete" position="left">
                     <button
                       onClick={() => handleDelete(set)}
-                      className="p-2 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+                      className="hover-reveal p-2 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
                       aria-label={`Delete ${set.title}`}
                     >
                       <Trash2 className="w-4 h-4" />

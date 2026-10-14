@@ -312,7 +312,7 @@ const Workspace: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50">
+      <div className="flex items-center justify-center h-[100dvh] bg-slate-50">
         <div className="flex flex-col items-center gap-5 animate-fade-in">
           <LogoMark size={56} className="animate-float" />
           <div className="w-40 h-1 rounded-full shimmer" />
@@ -323,7 +323,7 @@ const Workspace: React.FC = () => {
   }
 
   return (
-    <div className="app-shell flex h-screen h-[100dvh] bg-slate-50 overflow-hidden font-sans text-slate-900 relative">
+    <div className="app-shell flex h-[100dvh] bg-slate-50 overflow-hidden font-sans text-slate-900 relative">
       {/* Mobile Header */}
       <div className="no-print md:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/70 z-30 flex items-center px-4 justify-between shadow-sm">
           <div className="flex items-center gap-3">
@@ -356,7 +356,7 @@ const Workspace: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className={`flex-1 flex flex-col relative overflow-hidden pt-16 pb-16 md:pt-0 md:pb-0 transition-all duration-300`}>
+      <main className={`app-main flex-1 flex flex-col relative overflow-hidden pt-16 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pt-0 md:pb-0 transition-all duration-300`}>
         {/* Soft ambient backdrop behind every screen */}
         <div className="no-print pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="absolute inset-0 dot-grid opacity-40 [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]" />
@@ -435,7 +435,7 @@ const AppGate: React.FC = () => {
 
   if (isRestoring) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50">
+      <div className="flex items-center justify-center h-[100dvh] bg-slate-50">
         <div className="flex flex-col items-center gap-4 animate-fade-in">
           <LogoMark size={64} className="animate-pulse-slow" />
           <Loader2 className="w-5 h-5 text-primary-400 animate-spin" />

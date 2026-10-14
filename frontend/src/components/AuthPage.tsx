@@ -355,7 +355,7 @@ export const AuthPage: React.FC = () => {
   const nextDelay = () => 120 + (delayStep++) * 70;
 
   return (
-    <div className="min-h-screen w-full flex bg-[#faf9ff]">
+    <div className="min-h-[100dvh] w-full flex bg-[#faf9ff]">
       {/* Brand panel */}
       <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden bg-[#0b0a1a] text-white flex-col justify-between grain">
         <div className="mesh-bg">

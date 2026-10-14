@@ -278,7 +278,7 @@ export const Flashcards: React.FC<FlashcardsProps> = ({ documents, initialSetId,
   const reviewCount = dueQueue ? dueQueue.cards.length : 0;
 
   return (
-    <div className="max-w-5xl mx-auto p-8 h-full flex flex-col animate-fade-in">
+    <div className="max-w-5xl mx-auto p-4 md:p-8 h-full flex flex-col animate-fade-in">
 
       {!inSession && !isGenerating && (
         <div className="flex flex-col items-center text-center mt-10">
@@ -325,7 +325,7 @@ export const Flashcards: React.FC<FlashcardsProps> = ({ documents, initialSetId,
               </div>
             </div>
 
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-8 relative overflow-hidden text-left tool-card spotlight">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 relative overflow-hidden text-left tool-card spotlight">
                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 to-orange-500"></div>
 
                  <div className="mb-6">
@@ -398,8 +398,8 @@ export const Flashcards: React.FC<FlashcardsProps> = ({ documents, initialSetId,
 
       {/* Session complete */}
       {summary && !isSaving && (
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[500px] animate-scale-in">
-          <div className="relative overflow-hidden w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-10 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center md:min-h-[500px] animate-scale-in">
+          <div className="relative overflow-hidden w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-10 text-center">
             {summary.known / summary.total >= 0.6 && <Confetti />}
             <div className="relative w-20 h-20 mx-auto mb-6">
               <span className="absolute inset-0 rounded-3xl bg-amber-400/50 animate-ping"></span>
@@ -444,15 +444,15 @@ export const Flashcards: React.FC<FlashcardsProps> = ({ documents, initialSetId,
       )}
 
       {inSession && !summary && !isSaving && current && (
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[600px]">
+        <div className="flex-1 flex flex-col items-center justify-center md:min-h-[600px]">
           {/* Header Controls */}
-          <div className="w-full max-w-2xl flex justify-between items-center mb-3">
-            <div className="flex items-center gap-3">
+          <div className="w-full max-w-2xl flex flex-wrap justify-between items-center gap-2 mb-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                 <div className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-bold text-sm">
                     {isDailyReview ? 'Daily review' : 'Card'} {currentIndex + 1} / {sessionCards.length}
                 </div>
                 <Tooltip content={`${Object.keys(ratings).length} of ${sessionCards.length} rated`}>
-                  <div className="h-2 w-24 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="hidden sm:block h-2 w-24 bg-slate-200 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-700 ease-out-expo" style={{width: `${(Object.keys(ratings).length / sessionCards.length) * 100}%`}}></div>
                   </div>
                 </Tooltip>
@@ -463,7 +463,7 @@ export const Flashcards: React.FC<FlashcardsProps> = ({ documents, initialSetId,
                   return badge && <span className={`text-xs font-bold px-2 py-0.5 rounded-full capitalize ${badge.className}`}>{badge.text}</span>;
                 })()}
             </div>
-            <button onClick={exitDeck} className="text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors">
+            <button onClick={exitDeck} className="px-2 py-2 -mr-2 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors">
               {isDailyReview ? 'End review' : 'Exit Deck'}
             </button>
           </div>
@@ -482,26 +482,26 @@ export const Flashcards: React.FC<FlashcardsProps> = ({ documents, initialSetId,
              <div className="absolute inset-x-12 -bottom-6 h-full rounded-3xl bg-amber-50 border border-amber-100 -z-20 rotate-[1.5deg]"></div>
              <div className={`relative w-full h-full transition-transform duration-[900ms] ease-out-expo transform-style-3d ${isFlipped ? 'rotate-y-180 group-hover:[transform:rotateY(180deg)_rotateX(-4deg)]' : 'group-hover:[transform:rotateX(4deg)]'}`}>
                 {/* Front */}
-                <div className="absolute w-full h-full bg-[#fffdf8] rounded-3xl shadow-xl border border-stone-200 p-10 flex flex-col items-center justify-center text-center backface-hidden">
+                <div className="absolute w-full h-full bg-[#fffdf8] rounded-3xl shadow-xl border border-stone-200 p-6 pb-12 md:p-10 flex flex-col items-center justify-center text-center backface-hidden">
                     {/* Paper Texture Effect */}
                     <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')] rounded-3xl"></div>
 
-                   <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-6">
+                   <div className="w-12 h-12 flex-shrink-0 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-4 md:mb-6">
                         <span className="font-bold text-lg">Q</span>
                    </div>
-                   <p className="text-2xl md:text-3xl text-slate-800 font-display font-bold leading-snug">{current.card.front}</p>
-                   <p className="absolute bottom-8 text-xs font-bold text-slate-300 uppercase tracking-widest">Click to flip</p>
+                   <p className="w-full min-h-0 overflow-y-auto break-anywhere text-xl md:text-3xl text-slate-800 font-display font-bold leading-snug">{current.card.front}</p>
+                   <p className="absolute bottom-5 md:bottom-8 text-xs font-bold text-slate-300 uppercase tracking-widest">Tap to flip</p>
                 </div>
 
                 {/* Back */}
-                <div className="absolute w-full h-full bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 p-10 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 relative overflow-hidden">
+                <div className="absolute w-full h-full bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 p-6 md:p-10 flex flex-col items-center justify-center text-center backface-hidden rotate-y-180 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 rounded-full blur-[80px] opacity-20"></div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500 rounded-full blur-[80px] opacity-20"></div>
 
-                   <div className="relative z-10 w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-6 border border-emerald-500/30">
+                   <div className="relative z-10 w-12 h-12 flex-shrink-0 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 md:mb-6 border border-emerald-500/30">
                         <span className="font-bold text-lg">A</span>
                    </div>
-                   <p className="relative z-10 text-xl md:text-2xl text-slate-100 font-medium leading-relaxed">{current.card.back}</p>
+                   <p className="relative z-10 w-full min-h-0 overflow-y-auto break-anywhere text-lg md:text-2xl text-slate-100 font-medium leading-relaxed" data-lenis-prevent>{current.card.back}</p>
                 </div>
              </div>
           </div>
