@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Eye, EyeOff, Gauge, GraduationCap, Heart, Loader2, Pencil, Play, Plus, Shuffle, Timer, Zap, Brain,
 } from 'lucide-react';
@@ -71,9 +71,15 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ set, questions, onQuesti
     onQuestionsChange(questions.filter(x => x.id !== q.id), updated);
   });
 
+  // Stop generating if the user leaves this screen
+  const addAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => addAbort.current?.abort(), []);
+
   const addMore = async () => {
     setAdding({ total: addCount, got: 0 });
     setError(null);
+    const controller = new AbortController();
+    addAbort.current = controller;
     try {
       let current = questions;
       await assessmentAPI.streamAddMore(set.id, { count: addCount }, (event: GenerationEvent) => {
@@ -83,11 +89,13 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({ set, questions, onQuesti
           setAdding(a => a && { ...a, got: a.got + 1 });
         } else if (event.type === 'done') onQuestionsChange(current, event.set);
         else if (event.type === 'warning') setError(event.message);
-      });
+      }, controller.signal);
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(getErrorMessage(err, 'Could not add questions.'));
     } finally {
-      setAdding(null);
+      if (addAbort.current === controller) addAbort.current = null;
+      if (!controller.signal.aborted) setAdding(null);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { ToolHero } from './ToolHero';
 import { SavedSets } from './SavedSets';
@@ -127,16 +127,25 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({ documents, initial
     play(questions.filter(q => wrong.has(q.id)), { mode: 'review', timeLimit: null, shuffle: true, lives: 3 });
   };
 
+  // Stop generating fresh questions if the user leaves the quiz screen
+  const variantAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => variantAbort.current?.abort(), []);
+
   const variant = async (qids: string[]) => {
     if (!activeSet) return;
     let created: StudySet<unknown> | null = null;
+    const controller = new AbortController();
+    variantAbort.current = controller;
     try {
       await assessmentAPI.streamVariant(activeSet.id, qids, (event: GenerationEvent) => {
         if (event.type === 'done') created = event.set;
-      });
+      }, controller.signal);
       if (created) openSet(created);
     } catch (err) {
+      if (controller.signal.aborted) return;
       setSaveWarning(getErrorMessage(err, 'Could not create fresh questions.'));
+    } finally {
+      if (variantAbort.current === controller) variantAbort.current = null;
     }
   };
 

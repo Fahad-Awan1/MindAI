@@ -389,7 +389,10 @@ async def room_socket(websocket: WebSocket, room_id: str, token: str = ""):
             event = await websocket.receive_json()
             kind = event.get("type") if isinstance(event, dict) else None
 
-            if kind == "typing":
+            if kind == "ping":
+                # The app checks the connection is really alive (mobile networks leave half-open sockets)
+                await manager.send(websocket, {"type": "pong"})
+            elif kind == "typing":
                 await manager.broadcast(room_id, {"type": "typing", "user": brief}, exclude=websocket)
 
             elif kind == "message":

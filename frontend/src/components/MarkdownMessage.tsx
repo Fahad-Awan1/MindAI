@@ -50,7 +50,10 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ text, sources,
           </button>
         );
       }
-      return <a {...props} href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline hover:text-indigo-800">{children}</a>;
+      // Only real web links open (in a new tab / the phone's browser); a relative or "#" link from the model
+      // would navigate the app itself, so it is shown as plain text
+      if (!href || !/^(https?:|mailto:)/i.test(href)) return <span>{children}</span>;
+      return <a {...props} href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline hover:text-indigo-800 [overflow-wrap:anywhere]">{children}</a>;
     },
     table: ({ node: _node, ...props }) => (
       <div className="overflow-x-auto my-3">

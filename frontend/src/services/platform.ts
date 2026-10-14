@@ -32,7 +32,13 @@ const toBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
 export const saveFile = async (blob: Blob, name: string) => {
   if (isNative) {
     const written = await Filesystem.writeFile({ path: name, data: await toBase64(blob), directory: Directory.Cache });
-    await Share.share({ title: name, files: [written.uri], dialogTitle: `Save or share ${name}` });
+    try {
+      await Share.share({ title: name, files: [written.uri], dialogTitle: `Save or share ${name}` });
+    } catch (err) {
+      // Closing the share sheet without picking an app isn't a failure
+      if (/cancel/i.test(err instanceof Error ? err.message : String(err))) return;
+      throw err;
+    }
     return;
   }
   const url = URL.createObjectURL(blob);

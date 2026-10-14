@@ -56,6 +56,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })().finally(() => setIsRestoring(false));
   }, []);
 
+  // Coming back to the app after a while (it may have stayed alive in the background for days): renew the session
+  useEffect(() => {
+    let lastRefresh = Date.now();
+    const renew = () => {
+      if (document.visibilityState !== 'visible' || !getToken() || Date.now() - lastRefresh < 24 * 3600 * 1000) return;
+      lastRefresh = Date.now();
+      authAPI.refresh().then(result => { if (result.token) setToken(result.token); }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', renew);
+    return () => document.removeEventListener('visibilitychange', renew);
+  }, []);
+
   // Any 401 from the API (expired token) returns to the sign-in screen
   useEffect(() => onUnauthorized(() => {
     setUser(current => {

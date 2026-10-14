@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { authHeaders, notifyUnauthorized, setToken } from './authToken';
+import { authHeaders, getToken, notifyUnauthorized, setToken } from './authToken';
 import {
   AnswerValue, AttemptHistoryItem, AttemptResult, ExamStreamRequest, GenerationEvent, ItemResult, Question,
   QuizMode, QuizQuestionType, QuizStreamRequest, ResponseItem, DifficultySetting, ExamAttempt, MarkingEvent, QuestionMark,
@@ -11,10 +11,26 @@ import { saveFile } from './platform';
 // Set VITE_API_URL to call a backend on another address directly.
 export const API_BASE_URL: string = import.meta.env.VITE_API_URL || '';
 
-// Create axios instance
+// Create axios instance. A timeout stops spinners hanging forever when a connection silently drops
+// (uploads set their own, longer timeout).
 const api = axios.create({
   baseURL: API_BASE_URL,
+  // Generous: some AI requests (audio overviews, mind maps) legitimately take a few minutes
+  timeout: 300_000,
 });
+const UPLOAD_TIMEOUT = 15 * 60_000;
+
+const SERVER_UNREACHABLE = "Can't reach the MindAI server right now. Check your internet connection and try again.";
+// Gateway / tunnel errors (Cloudflare 52x, proxy 502-504): the server itself is down or unreachable
+const isGatewayStatus = (status: number) => (status >= 502 && status <= 504) || (status >= 520 && status <= 530);
+
+/** Sign out only if the rejected request used the current token (not an older one replaced meanwhile). */
+const handleUnauthorized = (sentAuthorization: string | null | undefined) => {
+  const current = getToken();
+  if (!current || (sentAuthorization && sentAuthorization !== `Bearer ${current}`)) return;
+  setToken(null);
+  notifyUnauthorized();
+};
 
 // Every request carries the login token; a rejected token signs the user out
 api.interceptors.request.use(config => {
@@ -25,9 +41,10 @@ api.interceptors.response.use(
   response => response,
   error => {
     const url: string = error.config?.url ?? '';
-    if (error.response?.status === 401 && !url.includes('/api/auth/login') && !url.includes('/api/auth/signup')) {
-      setToken(null);
-      notifyUnauthorized();
+    const authFlow = ['/api/auth/login', '/api/auth/signup', '/api/auth/google', '/api/auth/verify-email', '/api/auth/reset-password'].some(p => url.includes(p));
+    if (error.response?.status === 401 && !authFlow) {
+      const sent = error.config?.headers?.Authorization ?? error.config?.headers?.get?.('Authorization');
+      handleUnauthorized(sent ? String(sent) : null);
     }
     return Promise.reject(error);
   }
@@ -41,16 +58,72 @@ export class StreamError extends Error {
   }
 }
 
+const STREAM_INTERRUPTED = 'The connection was interrupted before the answer finished. Please try again.';
+
+/** POST to a streaming endpoint; throws StreamError with a clear message when it can't start. */
+const openStream = async (path: string, body: unknown, signal?: AbortSignal): Promise<ReadableStreamDefaultReader<Uint8Array>> => {
+  let response: Response;
+  const authorization = authHeaders().Authorization;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (error) {
+    if ((error as Error)?.name === 'AbortError') throw error;
+    throw new StreamError(SERVER_UNREACHABLE);
+  }
+  if (response.status === 401) handleUnauthorized(authorization);
+  if (!response.ok || !response.body) {
+    let detail = isGatewayStatus(response.status) ? SERVER_UNREACHABLE : `Request failed (${response.status})`;
+    try {
+      const data = await response.json();
+      if (typeof data?.detail === 'string') detail = data.detail;
+    } catch {
+      // Non-JSON error body (e.g. a proxy's HTML page) - keep the message above
+    }
+    throw new StreamError(detail);
+  }
+  return response.body.getReader();
+};
+
+/** Read NDJSON lines from a stream. A dropped connection (or a stream that ends without "done") is an error. */
+const readLines = async (reader: ReadableStreamDefaultReader<Uint8Array>, onLine: (line: string) => void, finished: () => boolean) => {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    let chunk: ReadableStreamReadResult<Uint8Array>;
+    try {
+      chunk = await reader.read();
+    } catch (error) {
+      if ((error as Error)?.name === 'AbortError') throw error;
+      throw new StreamError(STREAM_INTERRUPTED);
+    }
+    if (chunk.done) break;
+    buffer += decoder.decode(chunk.value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    lines.forEach(line => { if (line.trim()) onLine(line); });
+  }
+  buffer += decoder.decode();
+  if (buffer.trim()) onLine(buffer);
+  if (!finished()) throw new StreamError(STREAM_INTERRUPTED);
+};
+
 /**
  * Turn an API error into a user-friendly message, preferring the backend's `detail`.
  */
 export const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof StreamError) return error.message;
   if (axios.isAxiosError(error)) {
-    if (!error.response) {
-      return "Can't reach the MindAI server right now. Check your internet connection and try again.";
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return 'The server took too long to answer. Check your connection and try again.';
     }
+    if (!error.response) return SERVER_UNREACHABLE;
     const detail = (error.response.data as { detail?: unknown } | undefined)?.detail;
+    if (!detail && isGatewayStatus(error.response.status)) return SERVER_UNREACHABLE;
     if (typeof detail === 'string' && detail.trim()) return detail;
     // Validation errors: show the first message without pydantic's "Value error," prefix
     if (Array.isArray(detail) && detail[0]?.msg) return String(detail[0].msg).replace(/^Value error,\s*/i, '');
@@ -70,7 +143,7 @@ export const documentsAPI = {
     const formData = new FormData();
     formData.append('file', file);
     // Let the browser set the multipart Content-Type (including the boundary)
-    const response = await api.post('/api/documents/upload', formData);
+    const response = await api.post('/api/documents/upload', formData, { timeout: UPLOAD_TIMEOUT });
     return response.data;
   },
 
@@ -113,59 +186,16 @@ type StreamEvent =
  * Resolves with the saved chat message ID; rejects with StreamError (or AbortError if aborted).
  */
 export const streamChat = async (path: string, body: unknown, { onDelta, onSources, signal }: StreamOptions): Promise<{ chat_id: string }> => {
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify(body),
-      signal,
-    });
-  } catch (error) {
-    if ((error as Error)?.name === 'AbortError') throw error;
-    throw new StreamError('Cannot reach the MindAI server. Make sure the backend is running.');
-  }
-
-  if (response.status === 401) {
-    setToken(null);
-    notifyUnauthorized();
-  }
-  if (!response.ok || !response.body) {
-    let detail = `Request failed (${response.status})`;
-    try {
-      const data = await response.json();
-      if (typeof data?.detail === 'string') detail = data.detail;
-    } catch {
-      // Non-JSON error body - keep the generic message
-    }
-    throw new StreamError(detail);
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+  const reader = await openStream(path, body, signal);
   let chatId = '';
-
-  const handleLine = (line: string) => {
-    if (!line.trim()) return;
+  let done = false;
+  await readLines(reader, line => {
     const event = JSON.parse(line) as StreamEvent;
     if (event.type === 'sources') onSources?.(event.sources);
     else if (event.type === 'delta') onDelta(event.text);
-    else if (event.type === 'done') chatId = event.chat_id;
+    else if (event.type === 'done') { chatId = event.chat_id; done = true; }
     else if (event.type === 'error') throw new StreamError(event.detail || 'The AI service failed.');
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-    lines.forEach(handleLine);
-  }
-  buffer += decoder.decode();
-  handleLine(buffer);
-
+  }, () => done);
   return { chat_id: chatId };
 };
 
@@ -387,7 +417,7 @@ export const voiceAPI = {
   transcribe: async (audio: Blob, filename: string): Promise<string> => {
     const formData = new FormData();
     formData.append('file', audio, filename);
-    const response = await api.post('/api/voice/transcribe', formData);
+    const response = await api.post('/api/voice/transcribe', formData, { timeout: UPLOAD_TIMEOUT });
     return response.data.text;
   },
 
@@ -536,50 +566,14 @@ export const streamEvents = async (
   onEvent: (event: any) => void,
   signal?: AbortSignal
 ): Promise<void> => {
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify(body),
-      signal,
-    });
-  } catch (error) {
-    if ((error as Error)?.name === 'AbortError') throw error;
-    throw new StreamError('Cannot reach the MindAI server. Make sure the backend is running.');
-  }
-  if (response.status === 401) {
-    setToken(null);
-    notifyUnauthorized();
-  }
-  if (!response.ok || !response.body) {
-    let detail = `Request failed (${response.status})`;
-    try {
-      const data = await response.json();
-      if (typeof data?.detail === 'string') detail = data.detail;
-    } catch {
-      // Keep the generic message
-    }
-    throw new StreamError(detail);
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  const handle = (line: string) => {
-    if (!line.trim()) return;
+  const reader = await openStream(path, body, signal);
+  let done = false;
+  await readLines(reader, line => {
     const event = JSON.parse(line);
     if (event.type === 'error') throw new StreamError(event.detail || 'The AI service failed.');
+    if (event.type === 'done') done = true;
     onEvent(event);
-  };
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-    lines.forEach(handle);
-  }
-  handle(buffer + decoder.decode());
+  }, () => done);
 };
 
 // AI study group
@@ -602,7 +596,7 @@ export const importsAPI = {
   uploadMedia: async (file: File): Promise<ImportJob> => {
     const formData = new FormData();
     formData.append('file', file);
-    return (await api.post('/api/imports/media', formData)).data;
+    return (await api.post('/api/imports/media', formData, { timeout: UPLOAD_TIMEOUT })).data;
   },
   importUrl: async (url: string): Promise<ImportJob> => (await api.post('/api/imports/url', { url })).data,
   list: async (): Promise<ImportJob[]> => (await api.get('/api/imports')).data,
@@ -689,11 +683,24 @@ export const bankAPI = {
 
 export type ExportFormat = 'docx' | 'csv' | 'anki' | 'gift' | 'moodle' | 'kahoot' | 'gforms';
 
+// File extension per export format (matches backend/services/assessment/export.py FORMATS)
+const EXPORT_EXTENSIONS: Record<ExportFormat, string> = {
+  docx: 'docx', csv: 'csv', anki: 'txt', gift: 'gift.txt', moodle: 'xml', kahoot: 'kahoot.csv', gforms: 'gs',
+};
+
 /** Download a quiz or exam in another format (saves the file, or opens the share sheet in the app). */
 export const downloadExport = async (setId: string, format: ExportFormat, version: 'A' | 'B' = 'A', key = true) => {
   const response = await api.get(`/api/assessment/sets/${setId}/export`, { params: { format, version, key }, responseType: 'blob' });
   const disposition = String(response.headers['content-disposition'] || '');
-  const name = disposition.match(/filename="([^"]+)"/)?.[1] || `mindai.${format}`;
+  const utf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  let name = disposition.match(/filename="([^"]+)"/)?.[1] || `mindai.${EXPORT_EXTENSIONS[format]}`;
+  if (utf8) {
+    try {
+      name = decodeURIComponent(utf8);
+    } catch {
+      // Keep the plain name
+    }
+  }
   await saveFile(response.data as Blob, name);
 };
 

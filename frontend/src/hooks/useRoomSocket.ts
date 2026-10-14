@@ -7,10 +7,15 @@ export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
 // Server close codes
 const CLOSE_UNAUTHORIZED = 4401;
 const CLOSE_NOT_MEMBER = 4403;
+// Heartbeat: phones switching networks or waking from the background often keep a socket that looks
+// open but delivers nothing. A ping with no reply in time means it is dead, so reconnect.
+const PING_EVERY_MS = 25_000;
+const PONG_TIMEOUT_MS = 10_000;
 
 /**
- * Live connection to a study room. Reconnects with backoff after network drops,
- * but not when the server says the user signed out or is no longer a member.
+ * Live connection to a study room. Reconnects with backoff after network drops, straight away when the
+ * app comes back to the foreground or the network returns, and not at all when the server says the user
+ * signed out or is no longer a member.
  */
 export const useRoomSocket = (
   roomId: string,
@@ -26,10 +31,45 @@ export const useRoomSocket = (
     let stopped = false;
     let attempt = 0;
     let retryTimer: number | null = null;
+    let pingTimer: number | null = null;
+    let pongTimer: number | null = null;
+
+    const clearTimers = () => {
+      if (retryTimer) window.clearTimeout(retryTimer);
+      if (pingTimer) window.clearInterval(pingTimer);
+      if (pongTimer) window.clearTimeout(pongTimer);
+      retryTimer = pingTimer = pongTimer = null;
+    };
+
+    /** Drop the current socket without triggering the backoff path, and connect again right away. */
+    const reconnectNow = () => {
+      if (stopped) return;
+      const old = socketRef.current;
+      socketRef.current = null;
+      if (old) {
+        old.onclose = null;
+        old.onmessage = null;
+        old.close();
+      }
+      clearTimers();
+      attempt = 0;
+      connect();
+    };
+
+    /** Ask the server for a pong; no reply in time means the socket is dead. */
+    const ping = (ws: WebSocket) => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'ping' }));
+      if (pongTimer) window.clearTimeout(pongTimer);
+      pongTimer = window.setTimeout(() => { if (socketRef.current === ws) reconnectNow(); }, PONG_TIMEOUT_MS);
+    };
 
     const connect = () => {
       const token = getToken();
-      if (!token) return;
+      if (!token) {
+        setStatus('closed');
+        return;
+      }
       setStatus(attempt === 0 ? 'connecting' : 'reconnecting');
       const ws = new WebSocket(roomsAPI.socketUrl(roomId, token));
       socketRef.current = ws;
@@ -37,10 +77,14 @@ export const useRoomSocket = (
       ws.onopen = () => {
         attempt = 0;
         setStatus('open');
+        pingTimer = window.setInterval(() => ping(ws), PING_EVERY_MS);
       };
       ws.onmessage = (message) => {
+        // Any message proves the connection is alive
+        if (pongTimer) { window.clearTimeout(pongTimer); pongTimer = null; }
         try {
           const event = JSON.parse(message.data);
+          if (event.type === 'pong') return;
           if (event.type === 'removed') handlers.current.onRemoved(event.reason || 'You are no longer in this room.');
           else handlers.current.onEvent(event);
         } catch {
@@ -49,6 +93,7 @@ export const useRoomSocket = (
       };
       ws.onclose = (close) => {
         if (socketRef.current === ws) socketRef.current = null;
+        clearTimers();
         if (stopped) return;
         if (close.code === CLOSE_UNAUTHORIZED) {
           setToken(null);
@@ -68,10 +113,23 @@ export const useRoomSocket = (
       };
     };
 
+    // Back in the foreground, or the network came back: don't wait for the backoff timer or a dead socket
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const ws = socketRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) reconnectNow();
+      else ping(ws);
+    };
+    const onOnline = () => reconnectNow();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onOnline);
+
     connect();
     return () => {
       stopped = true;
-      if (retryTimer) window.clearTimeout(retryTimer);
+      clearTimers();
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onOnline);
       socketRef.current?.close();
       socketRef.current = null;
     };
