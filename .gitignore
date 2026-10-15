@@ -41,3 +41,12 @@ MindAI.apk
 *.apk
 *.aab
 frontend/dev-dist/
+
+# Mobile audit: only the 390x844 before/after screenshots and the walkthroughs are kept in the repo
+docs/mobile-audit/screenshots/before/360x740_*
+docs/mobile-audit/screenshots/before/430x932_*
+docs/mobile-audit/screenshots/before/768x1024_*
+docs/mobile-audit/screenshots/after/360x740_*
+docs/mobile-audit/screenshots/after/430x932_*
+docs/mobile-audit/screenshots/after/768x1024_*
+frontend/mobile-walkthrough-shots/

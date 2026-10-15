@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Session restored after reload",
+    "status": "ok",
+    "note": "",
+    "secs": 5
+  },
+  {
+    "name": "AI Chat: ask Leo (streamed answer with sources)",
+    "status": "ok",
+    "note": "",
+    "secs": 6
+  },
+  {
+    "name": "Quiz: open a saved quiz and play it",
+    "status": "ok",
+    "note": "",
+    "secs": 12
+  },
+  {
+    "name": "Back button inside the quiz asks before leaving",
+    "status": "ok",
+    "note": "",
+    "secs": 2
+  },
+  {
+    "name": "Export menu opens as a sheet and downloads a file",
+    "status": "ok",
+    "note": "downloaded Quiz__2_questions.csv",
+    "secs": 5
+  },
+  {
+    "name": "Exam paper: readable on a phone",
+    "status": "ok",
+    "note": "narrowest question text 277px",
+    "secs": 9
+  },
+  {
+    "name": "Study room: long link wraps, tap shows message actions",
+    "status": "ok",
+    "note": "",
+    "secs": 17
+  },
+  {
+    "name": "Reader: selecting text shows the actions",
+    "status": "ok",
+    "note": "",
+    "secs": 6
+  },
+  {
+    "name": "Keyboard: a focused field stays visible",
+    "status": "ok",
+    "note": "",
+    "secs": 5
+  },
+  {
+    "name": "Documents: upload shows progress on screen",
+    "status": "ok",
+    "note": "upload finished before it could be seen",
+    "secs": 4
+  }
+]
