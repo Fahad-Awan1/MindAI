@@ -16,7 +16,7 @@ TYPE_FORMATS = {
     "mcq": '"mcq": "options": 4 plausible, distinct options; "correct_answer_index": 0-3',
     "multi_select": '"multi_select": "options": 5 distinct options; "correct_indices": 2-3 indices of ALL correct options; stem ends with "(Select all that apply)"',
     "true_false": '"true_false": "question" is a single clear statement; "correct_bool": true or false (make about half false, with a subtle but real error)',
-    "fill_blank": '"fill_blank": "question" contains exactly one "____" per missing key term; "blanks": [{"accepted": ["term", "synonym or spelling variant"]}] in order',
+    "fill_blank": '"fill_blank": "question" is ONE declarative sentence from the material with exactly one "____" per missing key term (e.g. "The ____ is the powerhouse of the cell.") - never a question, and never a sentence followed by a separate question; "blanks": [{"accepted": ["term", "synonym or spelling variant"]}] in order',
     "matching": '"matching": "question" is an instruction like "Match each term to its definition"; "left": 4 terms; "right": their 4 matches in the SAME order (the server shuffles)',
     "ordering": '"ordering": "question" asks to put steps/events in order; "items": 4-6 items listed in the CORRECT order (the server shuffles)',
     "numeric": '"numeric": a calculation or quantity from the passage; "answer": number; "tolerance": acceptable absolute error; "unit": unit or ""',

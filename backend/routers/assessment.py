@@ -3,6 +3,7 @@ Quiz & exam generation 2.0: streamed generation across whole (or several) docume
 question types, plus editing single questions in a saved set.
 """
 import json
+import re
 import random
 from types import SimpleNamespace
 from typing import AsyncIterator, Dict, List, Literal, Optional, Union
@@ -246,7 +247,9 @@ async def exam_stream(request: ExamStreamRequest, user: User = Depends(get_curre
     avoid: List[str] = []
     for doc_id in doc_ids:
         avoid.extend(recent_quiz_questions(db, doc_id))
-    title = request.title or (f"{documents[0].title} · Examination" if len(documents) == 1 else "Combined Examination")
+    # "cell_biology.md" -> "cell_biology · Examination" (the file extension isn't part of the subject)
+    subject = re.sub(r"\.(md|markdown|txt|pdf|docx?|pptx?|rtf|odt)$", "", documents[0].title, flags=re.I) if documents else ""
+    title = request.title or (f"{subject} · Examination" if len(documents) == 1 else "Combined Examination")
     user_id = user.id
 
     async def events() -> AsyncIterator[str]:

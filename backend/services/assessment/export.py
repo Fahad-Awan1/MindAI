@@ -514,6 +514,7 @@ def content_disposition(filename: str) -> str:
     # Longest known extension first, so "gift.txt" and "kahoot.csv" stay whole
     ext = max((e for _, e in FORMATS.values() if filename.endswith("." + e)), key=len, default="")
     stem = filename[: -(len(ext) + 1)] if ext else filename
-    ascii_stem = re.sub(r"[^A-Za-z0-9_\-]+", "", stem.encode("ascii", "ignore").decode()).strip("_-") or "mindai"
+    # Spaces and symbols become one "_" ("Cell biology · Exam" -> "Cell_biology_Exam"), not glued words
+    ascii_stem = re.sub(r"[^A-Za-z0-9\-]+", "_", stem.encode("ascii", "ignore").decode()).strip("_-") or "mindai"
     ascii_name = f"{ascii_stem}.{ext}" if ext else ascii_stem
     return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"

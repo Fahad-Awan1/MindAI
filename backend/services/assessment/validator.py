@@ -7,6 +7,7 @@ and field limits. Invalid questions return None with a reason, and the generator
 """
 import math
 import random
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.assessment.normalize import jaccard, parse_number, stem_tokens
@@ -136,6 +137,10 @@ def clean_question(
 
     elif qtype == "fill_blank":
         stem = stem.replace("_____", BLANK).replace("___", BLANK) if BLANK not in stem else stem
+        # "The ____ makes ATP. Which organelle is this?" -> keep only the sentence with the blank
+        trailing = re.match(r"^(.*" + re.escape(BLANK) + r"[^?]*?[.!])\s+[^.!?]*\?\s*$", stem, re.S)
+        if trailing:
+            stem = trailing.group(1)
         blanks_raw = raw.get("blanks")
         if not isinstance(blanks_raw, list):
             return None, "missing blanks"

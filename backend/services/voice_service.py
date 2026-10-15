@@ -32,12 +32,42 @@ class VoiceServiceError(Exception):
     """Raised when speech-to-text or text-to-speech fails."""
 
 
+# What Whisper "hears" in silence or background noise (it was trained on subtitled video)
+SILENCE_PHRASES = {
+    "thank you", "thank you.", "thanks for watching", "thanks for watching!", "thank you for watching",
+    "thank you for watching.", "you", "bye", "bye.", "so", "okay", "oh", ".", "please subscribe",
+}
+NO_SPEECH_THRESHOLD = 0.6
+
+
+def _segment_value(segment, key: str, default: float) -> float:
+    value = segment.get(key, default) if isinstance(segment, dict) else getattr(segment, key, default)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def is_probably_silence(text: str, segments) -> bool:
+    """True when the transcript is most likely Whisper hallucinating on a silent recording.
+
+    Groq reports no_speech_prob as 0 even for pure silence, so a clip whose whole transcript is one of the
+    phrases Whisper invents ("Thank you.") is dropped: nobody dictates just that to a study assistant.
+    """
+    if not text or text.lower().strip() in SILENCE_PHRASES:
+        return True
+    return bool(segments) and all(_segment_value(s, "no_speech_prob", 0.0) >= NO_SPEECH_THRESHOLD for s in segments)
+
+
 async def transcribe(audio: bytes, filename: str) -> str:
     try:
-        result = await client.audio.transcriptions.create(file=(filename, audio), model=STT_MODEL)
+        result = await client.audio.transcriptions.create(file=(filename, audio), model=STT_MODEL, response_format="verbose_json")
     except Exception as e:
         raise VoiceServiceError(f"Transcription failed: {e}") from e
-    return (result.text or "").strip()
+    text = (result.text or "").strip()
+    # verbose_json adds per-segment confidence; the SDK keeps unknown fields in model_extra
+    segments = getattr(result, "segments", None) or (getattr(result, "model_extra", None) or {}).get("segments") or []
+    return "" if is_probably_silence(text, segments) else text
 
 
 def plain_text_for_speech(text: str) -> str:
