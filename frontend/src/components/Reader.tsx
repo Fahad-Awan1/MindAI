@@ -129,7 +129,6 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
     };
     document.addEventListener('selectionchange', onChange);
     return () => { window.clearTimeout(timer); document.removeEventListener('selectionchange', onChange); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [touch, segments.length]);
 
   // Hide the floating selection toolbar when scrolling (its position would be stale; on touch it's docked)
@@ -139,7 +138,7 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
     const hide = () => setSelection(null);
     container?.addEventListener('scroll', hide, { passive: true });
     return () => container?.removeEventListener('scroll', hide);
-  }, [segments.length]);
+  }, [touch, segments.length]);
 
   useEffect(() => {
     if (!toast) return;

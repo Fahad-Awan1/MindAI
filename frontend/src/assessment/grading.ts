@@ -13,9 +13,9 @@ export const normalizeText = (text: string): string =>
     .normalize('NFKC')
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s.\-]/g, ' ')
+    .replace(/[^\w\s.-]/g, ' ')
     .replace(ARTICLES, ' ')
-    .replace(/^[\s.\-]+|[\s.\-]+$/g, '')
+    .replace(/^[\s.-]+|[\s.-]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 

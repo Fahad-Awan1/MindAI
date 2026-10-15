@@ -500,10 +500,10 @@ export const roomsAPI = {
  * POST to an NDJSON streaming endpoint and hand every event to `onEvent`.
  * Rejects with StreamError on HTTP or {"type":"error"} failures (AbortError if aborted).
  */
-export const streamEvents = async (
+export const streamEvents = async <E = unknown>(
   path: string,
   body: unknown,
-  onEvent: (event: any) => void,
+  onEvent: (event: E) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const reader = await openStream(path, body, signal);
@@ -512,7 +512,7 @@ export const streamEvents = async (
     const event = JSON.parse(line);
     if (event.type === 'error') throw new StreamError(event.detail || 'The AI service failed.');
     if (event.type === 'done') done = true;
-    onEvent(event);
+    onEvent(event as E);
   }, () => done);
 };
 

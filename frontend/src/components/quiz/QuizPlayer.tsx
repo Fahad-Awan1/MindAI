@@ -187,7 +187,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
     patchMeta(q.id, { fifty_fifty: true });
   };
 
-  const useHint = () => {
+  const takeHint = () => {
     if (!q.hint || showHint[q.id]) return;
     setShowHint(prev => ({ ...prev, [q.id]: true }));
     patchMeta(q.id, { hints_used: (m.hints_used || 0) + 1 });
@@ -206,7 +206,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
       }
       if (typing) return;
       if (e.key === 'f' || e.key === 'F') patchMeta(q.id, { flagged: !m.flagged });
-      if (e.key === 'h' || e.key === 'H') useHint();
+      if (e.key === 'h' || e.key === 'H') takeHint();
       if (canNavigate && e.key === 'ArrowRight' && pos < sequence.length - 1) goto(pos + 1);
       if (canNavigate && e.key === 'ArrowLeft' && pos > 0) goto(pos - 1);
     };
@@ -299,7 +299,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
             {/* Tools + confidence */}
             {!result && (
               <div className="mt-6 flex flex-wrap items-center gap-2">
-                {q.hint && <button onClick={useHint} disabled={!!showHint[q.id]} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:border-amber-300 hover:text-amber-700 disabled:opacity-40" title="Hint (H)"><HelpCircle className="w-3.5 h-3.5" /> Hint</button>}
+                {q.hint && <button onClick={takeHint} disabled={!!showHint[q.id]} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:border-amber-300 hover:text-amber-700 disabled:opacity-40" title="Hint (H)"><HelpCircle className="w-3.5 h-3.5" /> Hint</button>}
                 {q.type === 'mcq' && mode !== 'test' && <button onClick={useFifty} disabled={!!hidden[q.id]} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:border-violet-300 hover:text-violet-700 disabled:opacity-40"><Scissors className="w-3.5 h-3.5" /> 50 / 50</button>}
                 <span className="flex-1" />
                 <span className="text-[11px] font-semibold text-slate-400 mr-1">How sure are you?</span>

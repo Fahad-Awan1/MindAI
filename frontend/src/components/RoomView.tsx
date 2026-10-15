@@ -4,7 +4,7 @@ import { DocumentFile, Persona, RoomDetail, RoomMessage, Source, UserBrief } fro
 import { roomsAPI, studyGroupAPI, studySetsAPI, challengesAPI, Challenge, getErrorMessage } from '../services/api';
 import { ChallengeModal, Leaderboard } from './quiz/ChallengeModal';
 import { useAuth, initials } from '../auth/AuthContext';
-import { useRoomSocket } from '../hooks/useRoomSocket';
+import { RoomSocketEvent, useRoomSocket } from '../hooks/useRoomSocket';
 import { MarkdownMessage } from './MarkdownMessage';
 import { SourceDialog } from './SourceDialog';
 import { QuizBattle, QuizState } from './QuizBattle';
@@ -181,7 +181,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   const addMessage = (message: RoomMessage) =>
     setMessages(prev => (prev.some(m => m.id === message.id) ? prev : [...prev, message]));
 
-  const handleEvent = useCallback((event: any) => {
+  const handleEvent = useCallback((event: RoomSocketEvent) => {
     switch (event.type) {
       case 'hello':
         setOnline(new Set(event.online));
@@ -725,11 +725,11 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               {isOwner ? (
                 <>
                   <button onClick={() => { setRenaming(detail.name); setShowSettings(false); }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-700"><Pencil className="w-4 h-4" /> Rename room</button>
-                  <button onClick={() => { setShowSettings(false); window.confirm('Reset the invite link? The old link will stop working.') && runAction(async () => setDetail(await roomsAPI.resetInvite(roomId)), 'Could not reset the invite.'); }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-700"><RefreshCw className="w-4 h-4" /> Reset invite link</button>
-                  <button onClick={() => { setShowSettings(false); window.confirm(`Delete "${detail.name}" for everyone? This can't be undone.`) && runAction(async () => { await roomsAPI.remove(roomId); onBack(); }, 'Could not delete the room.'); }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-rose-50 text-rose-600"><Trash2 className="w-4 h-4" /> Delete room</button>
+                  <button onClick={() => { setShowSettings(false); if (window.confirm('Reset the invite link? The old link will stop working.')) runAction(async () => setDetail(await roomsAPI.resetInvite(roomId)), 'Could not reset the invite.'); }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-slate-50 text-slate-700"><RefreshCw className="w-4 h-4" /> Reset invite link</button>
+                  <button onClick={() => { setShowSettings(false); if (window.confirm(`Delete "${detail.name}" for everyone? This can't be undone.`)) runAction(async () => { await roomsAPI.remove(roomId); onBack(); }, 'Could not delete the room.'); }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-rose-50 text-rose-600"><Trash2 className="w-4 h-4" /> Delete room</button>
                 </>
               ) : (
-                <button onClick={() => { setShowSettings(false); window.confirm(`Leave "${detail.name}"? Documents you shared will be removed from the room.`) && runAction(async () => { await roomsAPI.leave(roomId); onBack(); }, 'Could not leave the room.'); }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-rose-50 text-rose-600"><LogOut className="w-4 h-4" /> Leave room</button>
+                <button onClick={() => { setShowSettings(false); if (window.confirm(`Leave "${detail.name}"? Documents you shared will be removed from the room.`)) runAction(async () => { await roomsAPI.leave(roomId); onBack(); }, 'Could not leave the room.'); }} className="w-full flex items-center gap-2 px-4 py-2 hover:bg-rose-50 text-rose-600"><LogOut className="w-4 h-4" /> Leave room</button>
               )}
             </div>
           )}

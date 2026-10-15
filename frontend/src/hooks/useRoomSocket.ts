@@ -1,8 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { roomsAPI } from '../services/api';
+import { roomsAPI, ChallengeRow } from '../services/api';
+import { LeaderboardRow, RoomMessage, Source, UserBrief } from '../types';
+import type { QuizQuestionEvent, QuizRevealEvent } from '../components/QuizBattle';
 import { getToken, notifyUnauthorized, setToken } from '../services/authToken';
 
 export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
+
+/** Everything the server sends on a room socket (see backend/routers/rooms.py and services/room_service.py). */
+export type RoomSocketEvent =
+  | { type: 'hello'; online: string[] }
+  | { type: 'presence'; online: string[] }
+  | { type: 'message'; message: RoomMessage }
+  | { type: 'typing'; user: UserBrief }
+  | { type: 'ai_start'; stream_id: string; sources?: Source[]; persona?: string | null }
+  | { type: 'ai_delta'; stream_id: string; text: string }
+  | { type: 'ai_done'; stream_id: string; message: RoomMessage }
+  | { type: 'room_updated' }
+  | { type: 'challenge_update'; challenge_id: string; leaderboard: ChallengeRow[] }
+  | { type: 'quiz_preparing'; started_by: UserBrief; count: number }
+  | ({ type: 'quiz_question' } & QuizQuestionEvent)
+  | { type: 'quiz_answered'; index: number; answered: number }
+  | ({ type: 'quiz_reveal' } & QuizRevealEvent)
+  | { type: 'quiz_end'; leaderboard: LeaderboardRow[]; message?: RoomMessage }
+  | { type: 'quiz_cancelled' }
+  | { type: 'quiz_error'; detail: string }
+  | { type: 'error'; detail: string };
 
 // Server close codes
 const CLOSE_UNAUTHORIZED = 4401;
@@ -19,7 +41,7 @@ const PONG_TIMEOUT_MS = 10_000;
  */
 export const useRoomSocket = (
   roomId: string,
-  onEvent: (event: any) => void,
+  onEvent: (event: RoomSocketEvent) => void,
   onRemoved: (reason: string) => void
 ) => {
   const [status, setStatus] = useState<SocketStatus>('connecting');
@@ -83,7 +105,7 @@ export const useRoomSocket = (
         // Any message proves the connection is alive
         if (pongTimer) { window.clearTimeout(pongTimer); pongTimer = null; }
         try {
-          const event = JSON.parse(message.data);
+          const event = JSON.parse(message.data) as RoomSocketEvent | { type: 'pong' } | { type: 'removed'; reason?: string };
           if (event.type === 'pong') return;
           if (event.type === 'removed') handlers.current.onRemoved(event.reason || 'You are no longer in this room.');
           else handlers.current.onEvent(event);
