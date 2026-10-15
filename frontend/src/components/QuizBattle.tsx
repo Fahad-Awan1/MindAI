@@ -66,6 +66,13 @@ const Leaderboard: React.FC<{ rows: LeaderboardRow[]; me: UserBrief; limit?: num
 /** Full-screen live quiz battle shown to everyone in the room. */
 export const QuizBattle: React.FC<QuizBattleProps> = ({ state, me, canCancel, onAnswer, onCancel, onClose }) => {
   const [now, setNow] = useState(Date.now());
+  // Cancelling ends the battle for everyone, so it takes a second tap within a few seconds
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  useEffect(() => {
+    if (!confirmCancel) return;
+    const timer = window.setTimeout(() => setConfirmCancel(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [confirmCancel]);
   useBackHandler(onClose);
 
   // Tick the countdown while a question is open
@@ -83,7 +90,10 @@ export const QuizBattle: React.FC<QuizBattleProps> = ({ state, me, canCancel, on
       </div>
       <div className="flex items-center gap-1">
         {state.phase !== 'end' && canCancel && (
-          <button onClick={onCancel} className="px-2 py-2 text-xs font-bold text-slate-400 hover:text-rose-600">Cancel battle</button>
+          <button onClick={() => (confirmCancel ? onCancel() : setConfirmCancel(true))}
+            className={`px-2 py-2 text-xs font-bold hover:text-rose-600 ${confirmCancel ? 'text-rose-600' : 'text-slate-400'}`}>
+            {confirmCancel ? 'Tap again to end it for everyone' : 'Cancel battle'}
+          </button>
         )}
         {state.phase !== 'end' && (
           <button onClick={onClose} className="px-2 py-2 text-xs font-bold text-slate-400 hover:text-slate-700" title="Hide - it opens again with the next question">Hide</button>

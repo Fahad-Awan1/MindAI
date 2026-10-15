@@ -479,7 +479,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
               ? `Ask ${personaOf(persona)!.name} (${personaOf(persona)!.role.toLowerCase()})…`
               : isAllDocs ? 'Ask your whole knowledge base…' : `Ask about ${selectedDoc?.title ?? 'this document'}…`}
             above={personas.length > 0 ? (
-              <div className="flex items-center gap-1.5 mb-2 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-1.5 mb-2 overflow-x-auto no-scrollbar bg-white/85 backdrop-blur-md rounded-full px-2 py-1 -mx-1">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mr-1 flex-shrink-0">Talk to</span>
                 {[{ id: null as string | null, name: 'MindAI', role: 'Tutor', color: '#6366f1', description: 'Clear, cited answers' }, ...personas].map(p => {
                   const on = persona === p.id;

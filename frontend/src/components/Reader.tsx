@@ -44,6 +44,29 @@ const collapseWithMap = (text: string) => {
   return { flat, map };
 };
 
+/** Inline **bold** / *italic* / `code` without the Markdown markers. */
+const renderInline = (line: string): React.ReactNode[] =>
+  line.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g).map((part, k) => {
+    if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={k}>{part.slice(2, -2)}</strong>;
+    if (/^`[^`]+`$/.test(part)) return <code key={k} className="font-mono text-[0.9em] bg-slate-100 rounded px-1">{part.slice(1, -1)}</code>;
+    if (/^\*[^*\s][^*]*\*$/.test(part)) return <em key={k}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+
+/** Light Markdown (headings, bullets, emphasis) so .md notes don't show their # and ** markers. */
+const renderMarkdownLite = (text: string) =>
+  text.split('\n').map((line, k) => {
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      const size = heading[1].length <= 1 ? 'text-2xl' : heading[1].length === 2 ? 'text-xl' : 'text-lg';
+      return <span key={k} className={`block font-sans font-bold text-slate-900 ${size} mt-4 mb-1`}>{renderInline(heading[2])}</span>;
+    }
+    const bullet = line.match(/^(\s*)[-*+]\s+(.*)$/);
+    if (bullet) return <span key={k} className="block pl-5 -indent-4" style={{ marginLeft: `${bullet[1].length * 0.5}rem` }}>{'• '}{renderInline(bullet[2])}</span>;
+    if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) return <hr key={k} className="my-4 border-slate-200" />;
+    return <span key={k} className="block min-h-[1em]">{renderInline(line)}</span>;
+  });
+
 /** Locate a passage inside the segments, tolerating whitespace differences. */
 const findPassage = (segments: DocumentSegment[], passage: string): Highlight | null => {
   const target = squash(passage);
@@ -199,7 +222,8 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
   }
 
   const renderText = (seg: DocumentSegment) => {
-    if (!highlight || highlight.segment !== seg.index) return seg.text;
+    // A highlight is placed by character offsets in the raw text, so that segment stays raw
+    if (!highlight || highlight.segment !== seg.index) return renderMarkdownLite(seg.text);
     return (
       <>
         {seg.text.slice(0, highlight.start)}
@@ -260,7 +284,7 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
             {seg.label && (
               <h3 className="font-sans text-xs font-bold uppercase tracking-widest text-indigo-500 mb-3">{seg.label}</h3>
             )}
-            <p className="whitespace-pre-wrap">{renderText(seg)}</p>
+            <div className="whitespace-pre-wrap">{renderText(seg)}</div>
           </section>
         ))}
       </article>

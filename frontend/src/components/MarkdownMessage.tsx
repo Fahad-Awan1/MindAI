@@ -56,8 +56,8 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({ text, sources,
       return <a {...props} href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline hover:text-indigo-800 [overflow-wrap:anywhere]">{children}</a>;
     },
     table: ({ node: _node, ...props }) => (
-      <div className="overflow-x-auto my-3">
-        <table {...props} className="min-w-full text-sm" />
+      <div className="overflow-x-auto my-3 scroll-shadow-x rounded-lg" tabIndex={0} role="region" aria-label="Table (scrolls sideways)">
+        <table {...props} className="min-w-full text-sm my-0" />
       </div>
     ),
   };

@@ -124,9 +124,9 @@ export const ExamPaper: React.FC<ExamPaperProps> = ({ setId, exam, onStart, onOp
       {/* Toolbar */}
       <div className="no-print w-full max-w-4xl mb-6 bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-6 animate-rise">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
             <p className="page-eyebrow text-sky-600">Exam paper</p>
-            <h2 className="text-2xl font-display font-bold text-slate-900 truncate">{exam.title}</h2>
+            <h2 className="text-2xl font-display font-bold text-slate-900 break-words">{exam.title}</h2>
             <p className="text-sm text-slate-500 mt-1 flex flex-wrap gap-x-4">
               <span className="flex items-center gap-1"><Award className="w-4 h-4 text-amber-500" /> {exam.total_marks} marks</span>
               <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-sky-500" /> {exam.duration_minutes} minutes</span>

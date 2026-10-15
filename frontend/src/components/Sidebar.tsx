@@ -117,6 +117,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
   // Folded nav sections, by title
   const [closed, setClosed] = useState<string[]>(() => readJSON(SECTIONS_KEY, []));
 
+  // Phone drawer: while it is slid away it must not be reachable by screen readers or the keyboard
+  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 768px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const onChange = () => setDesktop(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const hiddenDrawer = !isOpen && !desktop;
+
   const toggleRail = () => setRail(r => { writeJSON(RAIL_KEY, !r); return !r; });
   const toggleSection = (title: string) => setClosed(prev => {
     const next = prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title];
@@ -174,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
       ></div>
 
       {/* Sidebar */}
-      <div className={`no-print group/sidebar fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] md:max-w-none pb-[env(safe-area-inset-bottom)] bg-[#0b0a1a] text-white flex-shrink-0 shadow-2xl transition-[transform,width] duration-700 ease-out-expo md:relative md:z-30 md:translate-x-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${rail ? 'md:w-[5.5rem]' : ''}`}>
+      <div inert={hiddenDrawer} aria-hidden={hiddenDrawer || undefined} className={`no-print group/sidebar fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] md:max-w-none pb-[env(safe-area-inset-bottom)] bg-[#0b0a1a] text-white flex-shrink-0 shadow-2xl transition-[transform,width] duration-700 ease-out-expo md:relative md:z-30 md:translate-x-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${rail ? 'md:w-[5.5rem]' : ''}`}>
         {/* Desktop: collapse / expand handle on the top-right edge (outside the clipped content) */}
         <button
           onClick={toggleRail}

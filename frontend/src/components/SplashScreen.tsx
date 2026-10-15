@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { prefersReducedMotion } from '../motion';
+import { isNative } from '../services/platform';
 
 const SEEN_KEY = 'mindai.splashSeen';
 
-/** The splash plays once per browser session (and never under reduced motion). */
+/** The splash plays once per browser session (never under reduced motion, and never in the Android app,
+ *  which already shows its own native splash). */
 export const shouldShowSplash = (): boolean => {
-  if (prefersReducedMotion()) return false;
+  if (prefersReducedMotion() || isNative) return false;
   try {
     return window.sessionStorage.getItem(SEEN_KEY) !== '1';
   } catch {

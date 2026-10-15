@@ -32,6 +32,14 @@ export const MindMapGenerator: React.FC<MindMapGeneratorProps> = ({ documents, i
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
+  const naturalWidth = useRef(0);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const applyZoom = () => {
+    const el = containerRef.current?.querySelector('svg');
+    if (el && naturalWidth.current) el.style.width = `${Math.round(naturalWidth.current * zoomRef.current)}px`;
+  };
+  useEffect(applyZoom, [zoom]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,7 +51,19 @@ export const MindMapGenerator: React.FC<MindMapGeneratorProps> = ({ documents, i
         containerRef.current.innerHTML = '';
         // Unique id per render avoids clashes with leftover nodes from earlier renders
         const { svg } = await mermaid.render(`mindmap-svg-${++renderCounter}`, mermaidCode);
-        if (!cancelled && containerRef.current) containerRef.current.innerHTML = svg;
+        if (!cancelled && containerRef.current) {
+          containerRef.current.innerHTML = svg;
+          // Mermaid draws the map at width 100%, which squeezes it to an unreadable size on a phone.
+          // Keep its natural size instead (the box scrolls) so zoom really makes it bigger or smaller.
+          const el = containerRef.current.querySelector('svg');
+          if (el) {
+            naturalWidth.current = el.viewBox?.baseVal?.width || el.getBoundingClientRect().width;
+            el.removeAttribute('width');
+            el.style.maxWidth = 'none';
+            el.style.height = 'auto';
+            applyZoom();
+          }
+        }
       } catch (err) {
         console.error("Mermaid render error:", err);
         if (!cancelled && containerRef.current) {
@@ -179,10 +199,10 @@ export const MindMapGenerator: React.FC<MindMapGeneratorProps> = ({ documents, i
                 </div>
                 <div className="flex gap-2">
                      <Tooltip content="Zoom Out">
-                        <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600"><ZoomOut className="w-4 h-4" /></button>
+                        <button onClick={() => setZoom(z => Math.max(0.4, +(z - 0.2).toFixed(1)))} aria-label="Zoom out" className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600"><ZoomOut className="w-4 h-4" /></button>
                      </Tooltip>
                      <Tooltip content="Zoom In">
-                        <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600"><ZoomIn className="w-4 h-4" /></button>
+                        <button onClick={() => setZoom(z => Math.min(3, +(z + 0.2).toFixed(1)))} aria-label="Zoom in" className="p-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600"><ZoomIn className="w-4 h-4" /></button>
                      </Tooltip>
                      <Tooltip content="Generate a new map">
                         <button onClick={() => {setMermaidCode(''); setIsGenerating(false);}} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition-colors">
@@ -197,7 +217,6 @@ export const MindMapGenerator: React.FC<MindMapGeneratorProps> = ({ documents, i
                 <div 
                     ref={containerRef} 
                     className="relative z-10 m-auto"
-                    style={{ zoom }}
                 ></div>
             </div>
         </div>

@@ -15,6 +15,7 @@ import {
   Trash2, RefreshCw, Pencil, Trophy, WifiOff, Loader2, Reply, AtSign, Sparkles, MessageCircle
 } from 'lucide-react';
 import { isNative, publicOrigin } from '../services/platform';
+import { firstName } from '../services/names';
 
 interface RoomViewProps {
   roomId: string;
@@ -68,7 +69,7 @@ const AI_HANDLES = ['mindai', 'maya', 'leo', 'zoe', 'omar'];
 
 /** A short @handle for each member: their first name, or their full name without spaces if that's ambiguous. */
 const memberHandles = (members: UserBrief[]): Map<string, string> => {
-  const first = (name: string) => (name.trim().split(/\s+/)[0] || 'user').replace(/[^\w.-]/g, '') || 'user';
+  const first = (name: string) => firstName(name).replace(/[^\w-]/g, '') || 'user';
   const counts = new Map<string, number>();
   members.forEach(m => counts.set(first(m.name).toLowerCase(), (counts.get(first(m.name).toLowerCase()) ?? 0) + 1));
   const result = new Map<string, string>();

@@ -79,6 +79,13 @@ interface PaperHeaderProps {
   onError?: (message: string) => void;
 }
 
+/** Sample text from the template is selected on focus, so typing replaces it instead of mixing into it. */
+const SAMPLE_TEXT = new Set([HEADER_TEMPLATE.institution, HEADER_TEMPLATE.campus, HEADER_TEMPLATE.department, 'New field']);
+const selectSample = (e: React.FocusEvent<HTMLInputElement>) => {
+  const el = e.currentTarget;
+  if (SAMPLE_TEXT.has(el.value)) setTimeout(() => el.select(), 0);
+};
+
 const fieldValue = (f: PaperHeaderField, duration: number, marks: number) =>
   f.value || (f.auto === 'duration' ? `${duration} Minutes` : f.auto === 'marks' ? String(marks) : '');
 
@@ -124,9 +131,9 @@ export const PaperHeader: React.FC<PaperHeaderProps> = ({ header, editing, durat
         <div className="flex-1 text-center">
           {editing ? (
             <div className="space-y-1">
-              <input value={header.institution} onChange={e => set({ institution: e.target.value })} placeholder="Institution" className={`${line} text-xl md:text-2xl font-bold`} />
-              <input value={header.campus} onChange={e => set({ campus: e.target.value })} placeholder="Campus (optional)" className={`${line} text-base md:text-lg font-bold`} />
-              <input value={header.department} onChange={e => set({ department: e.target.value })} placeholder="Department (optional)" className={`${line} text-base md:text-lg font-bold`} />
+              <input value={header.institution} onChange={e => set({ institution: e.target.value })} onFocus={selectSample} placeholder="Institution" className={`${line} text-xl md:text-2xl font-bold`} />
+              <input value={header.campus} onChange={e => set({ campus: e.target.value })} onFocus={selectSample} placeholder="Campus (optional)" className={`${line} text-base md:text-lg font-bold`} />
+              <input value={header.department} onChange={e => set({ department: e.target.value })} onFocus={selectSample} placeholder="Department (optional)" className={`${line} text-base md:text-lg font-bold`} />
             </div>
           ) : (
             <>
@@ -153,7 +160,7 @@ export const PaperHeader: React.FC<PaperHeaderProps> = ({ header, editing, durat
                 return (
                   <React.Fragment key={i}>
                     <td className="border border-black px-1.5 py-0.5 font-bold w-[17%] align-top">
-                      {editing ? <input value={f.label} onChange={e => setField(i, { label: e.target.value })} className="w-full bg-transparent border-0 p-0 font-bold focus:ring-0 text-[13px]" /> : `${f.label}:`}
+                      {editing ? <input value={f.label} onChange={e => setField(i, { label: e.target.value })} onFocus={selectSample} className="w-full bg-transparent border-0 p-0 font-bold focus:ring-0 text-[13px]" /> : `${f.label}:`}
                     </td>
                     <td className="border border-black px-1.5 py-0.5 w-[33%] align-top">
                       {editing ? (

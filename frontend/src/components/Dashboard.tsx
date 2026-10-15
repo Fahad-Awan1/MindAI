@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Tooltip } from './Tooltip';
 import { ActivityChart, AccuracyTrend, MasteryList } from './ProgressCharts';
 import { RevealText, Reveal, CountUp, Marquee, Magnetic, RollText, useTilt } from '../motion';
+import { firstName as getFirstName } from '../services/names';
 import {
   FileText, BrainCircuit, Zap, GraduationCap, Plus, Clock, Sparkles, ChevronRight, ArrowUpRight,
   Flame, Target, Layers, MessageSquareQuote, Headphones, MessagesSquare, Library, CalendarClock, FileSignature, Network, Loader2, BarChart3, CalendarCheck,
@@ -214,7 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ documents, onChangeView, o
 
   const totals = progress?.totals;
   const streak = progress?.current_streak_days ?? 0;
-  const firstName = user?.name.split(' ')[0] ?? 'Student';
+  const firstName = getFirstName(user?.name) || 'Student';
 
   const streakMessage = !progress
     ? `You have ${documents.length} documents ready for study.`

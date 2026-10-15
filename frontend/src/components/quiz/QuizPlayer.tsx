@@ -61,6 +61,11 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
   const q = questions[sequence[pos]];
   const value = answers[q.id] ?? emptyAnswer(q);
   const result = checked[q.id];
+  // After Check, the feedback pushes Next below the fold on a phone: bring it into view
+  const actionsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (result) actionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [result]);
   const m = meta[q.id] || blankMeta();
   const isLast = mode === 'adaptive' ? sequence.length >= questions.length : pos === sequence.length - 1;
 
@@ -302,16 +307,19 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ setId, title, questions,
                 {q.hint && <button onClick={takeHint} disabled={!!showHint[q.id]} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:border-amber-300 hover:text-amber-700 disabled:opacity-40" title="Hint (H)"><HelpCircle className="w-3.5 h-3.5" /> Hint</button>}
                 {q.type === 'mcq' && mode !== 'test' && <button onClick={useFifty} disabled={!!hidden[q.id]} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:border-violet-300 hover:text-violet-700 disabled:opacity-40"><Scissors className="w-3.5 h-3.5" /> 50 / 50</button>}
                 <span className="flex-1" />
-                <span className="text-[11px] font-semibold text-slate-400 mr-1">How sure are you?</span>
-                {CONFIDENCE.map(c => (
-                  <button key={c.value} onClick={() => patchMeta(q.id, { confidence: m.confidence === c.value ? null : c.value })}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${m.confidence === c.value ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{c.label}</button>
-                ))}
+                {/* Kept together so a narrow screen wraps the whole group, not single buttons */}
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-400 mr-1">How sure are you?</span>
+                  {CONFIDENCE.map(c => (
+                    <button key={c.value} onClick={() => patchMeta(q.id, { confidence: m.confidence === c.value ? null : c.value })}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${m.confidence === c.value ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{c.label}</button>
+                  ))}
+                </span>
               </div>
             )}
 
             {/* Actions */}
-            <div className="mt-6 flex items-center gap-3">
+            <div ref={actionsRef} className="mt-6 flex items-center gap-3 scroll-mb-24">
               {canNavigate && <button onClick={() => goto(pos - 1)} disabled={pos === 0} className="flex items-center gap-1.5 px-4 py-3 rounded-2xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-30"><ArrowLeft className="w-4 h-4" /> Back</button>}
               <span className="flex-1" />
               {instant && !result ? (

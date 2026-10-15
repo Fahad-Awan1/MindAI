@@ -56,8 +56,10 @@ export const setupNative = () => {
   if (!isNative) return;
   document.documentElement.classList.add('native-app');
   StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
-  StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
-  StatusBar.setBackgroundColor({ color: '#0b0a1a' }).catch(() => {});
+  // Android 15 always draws the status bar transparent over the (white) app, so the icons must be dark.
+  // A white bar keeps older Android versions looking the same.
+  StatusBar.setStyle({ style: Style.Light }).catch(() => {});
+  StatusBar.setBackgroundColor({ color: '#ffffff' }).catch(() => {});
   window.requestAnimationFrame(() => { SplashScreen.hide().catch(() => {}); });
   setupKeyboard();
 };
