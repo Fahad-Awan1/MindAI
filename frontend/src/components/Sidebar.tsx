@@ -148,6 +148,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
     // shows every item, folded or not.
     const section = NAV_SECTIONS.find(s => s.items.some(i => i.view === currentView));
     const folded = !!section && closed.includes(section.title) && !(rail && window.matchMedia('(min-width: 768px)').matches);
+    // The closed phone drawer is off screen: nothing to measure (it is measured again when it opens)
+    if (hiddenDrawer) return;
+    let frame = 0;
     const measure = () => {
       const list = listRef.current;
       const button = buttonRefs.current.get(currentView);
@@ -157,18 +160,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
       }
       const listRect = list.getBoundingClientRect();
       const rect = button.getBoundingClientRect();
-      setPill(rect.height > 0 ? { top: rect.top - listRect.top, height: rect.height } : null);
+      const next = rect.height > 0 ? { top: rect.top - listRect.top, height: rect.height } : null;
+      // Unchanged: no re-render
+      setPill(prev => (prev && next && prev.top === next.top && prev.height === next.height ? prev : next));
+    };
+    // Resize notifications arrive in bursts while sections fold: measure at most once per frame
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; measure(); });
     };
     measure();
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
     if (observer && listRef.current) observer.observe(listRef.current);
-    window.addEventListener('resize', measure);
+    window.addEventListener('resize', schedule);
     return () => {
+      cancelAnimationFrame(frame);
       observer?.disconnect();
-      window.removeEventListener('resize', measure);
+      window.removeEventListener('resize', schedule);
     };
     // Re-measured when sections fold / unfold too (the ResizeObserver also catches the end of the fold animation)
-  }, [currentView, rail, closed]);
+  }, [currentView, rail, closed, hiddenDrawer]);
 
   const handleNavClick = (view: AppView) => {
     onChangeView(view);

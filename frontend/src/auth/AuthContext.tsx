@@ -28,30 +28,37 @@ export type AuthOutcome = { verifyEmail: string | null };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isRestoring, setIsRestoring] = useState(() => !!getToken() || Capacitor.isNativePlatform());
+  // A remembered session opens the app straight away; the server confirms it in the background
+  const [user, setUser] = useState<User | null>(() => (getToken() ? getCachedUser<User>() : null));
+  const [isRestoring, setIsRestoring] = useState(() => (!!getToken() || Capacitor.isNativePlatform()) && !(getToken() && getCachedUser()));
   const [claimedDocuments, setClaimedDocuments] = useState(0);
   const [sessionExpired, setSessionExpired] = useState(false);
 
   // Restore the saved session. Only the server saying the token is invalid (401) signs the user out:
-  // when it can't be reached (no internet, server restarting) the app opens with the remembered account.
+  // when it can't be reached (no internet, server restarting) the app stays open with the remembered account.
   useEffect(() => {
     (async () => {
       await restoreNativeSession();
       if (!getToken()) return;
+      const remembered = getCachedUser<User>();
+      if (remembered) {
+        // Android: the session came back from the app's own storage
+        setUser(current => current ?? remembered);
+        setIsRestoring(false);
+      }
+      // Both at once (not one after the other): check the account and give the session a fresh full lifetime
+      authAPI.refresh().then(result => { if (result.token) setToken(result.token); }).catch(() => {});
       try {
         const me = await authAPI.me();
         setUser(me);
         setCachedUser(me);
-        // Keep the session alive: every visit gets a fresh token with a full lifetime
-        authAPI.refresh().then(result => { if (result.token) setToken(result.token); }).catch(() => {});
       } catch (err) {
         const status = axios.isAxiosError(err) ? err.response?.status : undefined;
         if (status === 401) {
           setToken(null);
-        } else {
-          const cached = getCachedUser<User>();
-          if (cached) setUser(cached);
+          setUser(null);
+        } else if (remembered) {
+          setUser(current => current ?? remembered);
         }
       }
     })().finally(() => setIsRestoring(false));

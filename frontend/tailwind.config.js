@@ -8,9 +8,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Outfit', 'sans-serif'],
-        serif: ['"Crimson Pro"', 'serif'],
+        // Self-hosted variable fonts (@fontsource-variable, imported in src/index.tsx)
+        sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['"Outfit Variable"', 'Outfit', 'sans-serif'],
+        serif: ['"Crimson Pro Variable"', '"Crimson Pro"', 'Georgia', 'serif'],
         // Elegant display serif for headline accents (paired with Outfit, like the reference's serif/sans mix)
         elegant: ['"Instrument Serif"', 'Georgia', 'serif'],
       },

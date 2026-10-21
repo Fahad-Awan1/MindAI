@@ -97,7 +97,18 @@ export const RevealText: React.FC<RevealTextProps> = ({
  * Text whose characters roll up on hover (each character is duplicated below itself).
  * Hover is triggered by the nearest ancestor with class "roll-host" or by the text itself.
  */
+// The roll plays on hover, which touch screens don't have: there the label stays plain text
+// (two elements per letter add up: the menu alone had ~600 of them, all costing style and layout work)
+const CAN_HOVER = (() => {
+  try {
+    return window.matchMedia('(hover: hover)').matches;
+  } catch {
+    return true;
+  }
+})();
+
 export const RollText: React.FC<{ text: string; className?: string }> = ({ text, className = '' }) => (
+  !CAN_HOVER ? <span className={className}>{text}</span> :
   <span className={`roll ${className}`} aria-label={text}>
     {Array.from(text).map((ch, i) => (
       <span className="roll-c" key={i} aria-hidden="true">

@@ -51,12 +51,17 @@ SUPPORTED_TYPES = {
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
-def to_response(document: Document, include_file_data: bool = False) -> DocumentResponse:
+# The document list sends only the start of each text (a preview line); the full text stays on the server
+LIST_PREVIEW_CHARS = 300
+
+
+def to_response(document: Document, include_file_data: bool = False, preview_only: bool = False) -> DocumentResponse:
     """Build a DocumentResponse from a Document row."""
+    content = document.content or ""
     doc_data = {
         "id": document.id,
         "title": document.title,
-        "content": document.content or "",
+        "content": content[:LIST_PREVIEW_CHARS] if preview_only else content,
         "type": document.type,
         "created_at": document.created_at,
         "summary": document.summary
@@ -170,9 +175,12 @@ def get_documents(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get the user's documents (without file payloads, to keep the response small)."""
+    """
+    Get the user's documents: titles, summaries and a short text preview. Not the full text (it can be
+    megabytes for long PDFs and is loaded on every app start); screens that need it fetch one document.
+    """
     documents = db.query(Document).filter(Document.user_id == user.id).order_by(Document.created_at.desc()).all()
-    return [to_response(doc) for doc in documents]
+    return [to_response(doc, preview_only=True) for doc in documents]
 
 
 @router.get("/{doc_id}", response_model=DocumentResponse)

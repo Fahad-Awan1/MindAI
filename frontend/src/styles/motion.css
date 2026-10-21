@@ -401,7 +401,7 @@ button { transition-property: color, background-color, border-color, box-shadow,
 }
 @keyframes glowBreath { 0%, 100% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.08); opacity: 1; } }
 .splash__counter {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit Variable', 'Outfit', sans-serif;
   font-variant-numeric: tabular-nums;
   font-weight: 300;
   line-height: 0.8;
@@ -513,3 +513,29 @@ button { transition-property: color, background-color, border-color, box-shadow,
 
 /* Score ring fills to its value (--ring-to = final dash offset) */
 @keyframes ringFill { to { stroke-dashoffset: var(--ring-to); } }
+
+/* ---------- Touch devices: still decorations ----------
+   Phones paint every frame of an endless animation on a weak GPU/CPU: drifting shapes blurred at 70px,
+   film grain, a gradient sliding through text, floating chips. Together they kept the page redrawing
+   ~45 times a second while nothing happened, slowing every tap and draining the battery. On touch
+   screens they stay still (same look, no motion); functional animations (spinners, typing dots,
+   progress) are untouched. Frosted glass uses a smaller blur, which is far cheaper while scrolling. */
+@media (pointer: coarse) {
+  .mesh-blob,
+  .grain::after,
+  .text-gradient-anim,
+  .float-a,
+  .float-b,
+  .animate-float,
+  .animate-blob,
+  .animate-blob-slow,
+  .animate-spin-slow,
+  .animate-bounce-slight,
+  .animate-gradient-x {
+    animation: none !important;
+  }
+  .mesh-blob { filter: blur(48px); will-change: auto; }
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl { --tw-backdrop-blur: blur(12px); }
+}

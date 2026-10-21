@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { DocumentFile, AppView, Progress, StudySetKind, StudySetSummary } from '../types';
 import { progressAPI, bankAPI, getErrorMessage } from '../services/api';
+import { cached, saveCached } from '../services/chatCache';
 import { useAuth } from '../auth/AuthContext';
 import { Tooltip } from './Tooltip';
 import { ActivityChart, AccuracyTrend, MasteryList } from './ProgressCharts';
@@ -200,7 +201,8 @@ const MotivationRow: React.FC<{ progress: Progress; onOpenSet: (set: StudySetSum
 
 export const Dashboard: React.FC<DashboardProps> = ({ documents, onChangeView, onOpenSet, onStartReview }) => {
   const { user } = useAuth();
-  const [progress, setProgress] = useState<Progress | null>(null);
+  // Last visit's numbers show at once; fresh ones replace them when they arrive
+  const [progress, setProgress] = useState<Progress | null>(() => cached<Progress>(user?.id, 'progress'));
   const [progressError, setProgressError] = useState<string | null>(null);
 
   // Reload whenever the dashboard is shown or the document list changes
@@ -208,7 +210,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ documents, onChangeView, o
     let cancelled = false;
     setProgressError(null);
     progressAPI.get()
-      .then(p => { if (!cancelled) setProgress(p); })
+      .then(p => {
+        saveCached(user?.id, 'progress', p);
+        if (!cancelled) setProgress(p);
+      })
       .catch(err => { if (!cancelled) setProgressError(getErrorMessage(err, 'Failed to load your progress.')); });
     return () => { cancelled = true; };
   }, [documents.length]);

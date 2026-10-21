@@ -13,15 +13,12 @@
     <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="manifest" href="/site.webmanifest" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Crimson+Pro:wght@400;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <!-- Fonts are self-hosted (bundled from @fontsource): no render-blocking stylesheet from another server -->
     <style>
       body {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
         background-color: #f8fafc;
         -webkit-font-smoothing: antialiased;
-        text-rendering: optimizeLegibility;
       }
       /* Before the app mounts: brand background so there's no white flash before the splash screen */
       #root:empty { min-height: 100vh; background: #0b0a1a; }

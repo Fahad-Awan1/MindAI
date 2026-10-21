@@ -43,6 +43,20 @@ def reindex_outdated_documents() -> None:
         db.close()
 
 
+def warm_up_search() -> None:
+    """
+    Load the embedding model and run one search now, so the first question after a restart is as fast
+    as the rest (loading the model and the first encode take many seconds on a cold start).
+    """
+    try:
+        rag_service.search("warm up", top_k=1)
+    except Exception as e:
+        print(f"Search warm-up failed: {e}")
+
+
 def start_background_reindex() -> None:
-    """Run the re-index without delaying server startup (also warms up the embedding model)."""
-    threading.Thread(target=reindex_outdated_documents, name="reindex", daemon=True).start()
+    """Warm up the search, then re-index outdated documents, without delaying server startup."""
+    def run():
+        warm_up_search()
+        reindex_outdated_documents()
+    threading.Thread(target=run, name="reindex", daemon=True).start()

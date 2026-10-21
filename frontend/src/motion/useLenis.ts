@@ -7,6 +7,14 @@ import { prefersReducedMotion } from './index';
  * dialogs and anything marked data-lenis-prevent keep native scrolling.
  * Returns a ref for the wrapper element; pass `enabled = false` for views that manage their own scroll.
  */
+const hasFinePointer = () => {
+  try {
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  } catch {
+    return false;
+  }
+};
+
 // The page's smooth scroller, if one is running (so other code can scroll through it instead of fighting it)
 let activeLenis: Lenis | null = null;
 
@@ -26,7 +34,9 @@ export function useLenis<T extends HTMLElement>(enabled: boolean, resetKey?: unk
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
-    if (!enabled || !wrapper || prefersReducedMotion()) return;
+    // Mouse / trackpad only. Touch screens already scroll natively with momentum; there Lenis would only add a
+    // callback on every animation frame, forever, costing a phone's CPU and battery for nothing.
+    if (!enabled || !wrapper || prefersReducedMotion() || !hasFinePointer()) return;
     const content = wrapper.firstElementChild as HTMLElement | null;
     if (!content) return;
     const lenis = new Lenis({

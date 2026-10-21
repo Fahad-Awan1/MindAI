@@ -1,37 +1,41 @@
 /**
- * Last-known chat list, projects and recently opened chats, so AI Chat shows them instantly and refreshes
- * in the background (the server can be slow to reach over a phone connection or a tunnel).
+ * Last-known data per account (documents, dashboard progress, chat list, projects) and recently opened chats,
+ * so the app shows them instantly and refreshes in the background: the server can be slow to reach over a
+ * phone connection or a tunnel, and nobody should stare at a spinner for data they saw a minute ago.
  *
- * Lists are kept per account in localStorage; opened chats only in memory for this session.
+ * Lists are kept per account in localStorage (cleared on logout); opened chats only in memory for this session.
  */
 import { ConversationDetail, ConversationSummary, Project } from '../types';
 
-const LIST_KEY = (userId: string) => `mindai.chats.${userId}`;
-const PROJECTS_KEY = (userId: string) => `mindai.projects.${userId}`;
+const PREFIX = 'mindai.cache.';
+const key = (userId: string, name: string) => `${PREFIX}${userId}.${name}`;
 const MAX_OPENED = 30;
 
-const read = <T,>(key: string): T | null => {
+/** A cached value for this account, or null */
+export const cached = <T,>(userId: string | null | undefined, name: string): T | null => {
+  if (!userId) return null;
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = window.localStorage.getItem(key(userId, name));
     return raw ? (JSON.parse(raw) as T) : null;
   } catch {
     return null;
   }
 };
 
-const write = (key: string, value: unknown) => {
+export const saveCached = (userId: string | null | undefined, name: string, value: unknown) => {
+  if (!userId) return;
   try {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    window.localStorage.setItem(key(userId, name), JSON.stringify(value));
   } catch {
     // Storage full or unavailable: the app just loads from the server next time
   }
 };
 
-export const cachedChats = (userId: string) => read<ConversationSummary[]>(LIST_KEY(userId));
-export const saveChats = (userId: string, chats: ConversationSummary[]) => write(LIST_KEY(userId), chats.slice(0, 200));
+export const cachedChats = (userId: string) => cached<ConversationSummary[]>(userId, 'chats');
+export const saveChats = (userId: string, chats: ConversationSummary[]) => saveCached(userId, 'chats', chats.slice(0, 200));
 
-export const cachedProjects = (userId: string) => read<Project[]>(PROJECTS_KEY(userId));
-export const saveProjects = (userId: string, projects: Project[]) => write(PROJECTS_KEY(userId), projects);
+export const cachedProjects = (userId: string) => cached<Project[]>(userId, 'projects');
+export const saveProjects = (userId: string, projects: Project[]) => saveCached(userId, 'projects', projects);
 
 const opened = new Map<string, ConversationDetail>();
 
@@ -43,12 +47,15 @@ export const saveChat = (chat: ConversationDetail) => {
 };
 export const forgetChat = (id: string) => { opened.delete(id); };
 
-/** On logout: nothing of this account's chats stays on the device */
+/** On logout: nothing of this account's data stays on the device */
 export const clearChatCache = (userId: string) => {
   opened.clear();
   try {
-    window.localStorage.removeItem(LIST_KEY(userId));
-    window.localStorage.removeItem(PROJECTS_KEY(userId));
+    const mine = `${PREFIX}${userId}.`;
+    for (let i = window.localStorage.length - 1; i >= 0; i--) {
+      const k = window.localStorage.key(i);
+      if (k && (k.startsWith(mine) || k === `mindai.chats.${userId}` || k === `mindai.projects.${userId}`)) window.localStorage.removeItem(k);
+    }
   } catch {
     // Storage unavailable: nothing was stored
   }

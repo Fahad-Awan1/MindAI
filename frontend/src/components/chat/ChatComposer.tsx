@@ -144,7 +144,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <MentionMenu items={matches} active={active} onPick={insertMention} onHover={setActive} />
         )}
         {/* Animated gradient ring on focus */}
-        <div className={`absolute -inset-[2px] rounded-[1.15rem] bg-gradient-to-r ${colors.ring} bg-[length:200%_100%] animate-gradient-x opacity-0 group-focus-within/composer:opacity-100 blur-[1.5px] transition-opacity duration-500`} />
+        <div className={`absolute -inset-[2px] rounded-[1.15rem] bg-gradient-to-r ${colors.ring} bg-[length:200%_100%] opacity-0 group-focus-within/composer:opacity-100 group-focus-within/composer:animate-gradient-x blur-[1.5px] transition-opacity duration-500`} />
         <div className={`relative flex items-end gap-1.5 bg-white rounded-2xl border border-slate-200 shadow-lg shadow-slate-900/5 transition-all duration-500 group-focus-within/composer:border-transparent group-focus-within/composer:shadow-xl ${small ? 'p-1 pl-3' : 'p-1.5 pl-4'}`}>
           {leading && <div className="flex items-center self-center flex-shrink-0">{leading}</div>}
           <textarea

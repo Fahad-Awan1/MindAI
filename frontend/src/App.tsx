@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { Sidebar, VIEW_LABELS } from './components/Sidebar';
-import { DocumentList } from './components/DocumentList';
-import { ChatInterface } from './components/ChatInterface';
-import { QuizGenerator } from './components/QuizGenerator';
-import { Flashcards } from './components/Flashcards';
-import { StudyPlanner } from './components/StudyPlanner';
-import { ExamGenerator } from './components/ExamGenerator';
 import { Dashboard } from './components/Dashboard';
 import { DocumentFile, AppView, StudySetSummary, STUDY_SET_VIEW, ReaderFocus, Source, ConceptRequest, ChatTarget } from './types';
 import { documentsAPI, getErrorMessage, OPEN_CHAT_EVENT } from './services/api';
 import { Menu, Loader2, X, Sparkles } from 'lucide-react';
 import { useAuth, initials } from './auth/AuthContext';
-import { AuthPage } from './components/AuthPage';
 import { ProfileDialog } from './components/ProfileDialog';
 import { TabBar } from './components/TabBar';
 import { Logo, LogoMark } from './components/Logo';
@@ -20,6 +13,25 @@ import { useLenis } from './motion/useLenis';
 import { useGlobalSpotlight, prefersReducedMotion } from './motion';
 import { onBackButton } from './services/platform';
 import { handleBack } from './hooks/useBackHandler';
+import { cached, saveCached } from './services/chatCache';
+
+// Every screen but the dashboard loads when first opened, so the app starts with a small download.
+// Once the app is idle the main screens are fetched in the background, so switching to them stays instant.
+const loadChat = () => import('./components/ChatInterface');
+const loadDocumentsScreen = () => import('./components/DocumentList');
+const loadQuiz = () => import('./components/QuizGenerator');
+const loadExam = () => import('./components/ExamGenerator');
+const loadFlashcards = () => import('./components/Flashcards');
+const loadPlanner = () => import('./components/StudyPlanner');
+const ChatInterface = lazy(() => loadChat().then(m => ({ default: m.ChatInterface })));
+const DocumentList = lazy(() => loadDocumentsScreen().then(m => ({ default: m.DocumentList })));
+const QuizGenerator = lazy(() => loadQuiz().then(m => ({ default: m.QuizGenerator })));
+const ExamGenerator = lazy(() => loadExam().then(m => ({ default: m.ExamGenerator })));
+const Flashcards = lazy(() => loadFlashcards().then(m => ({ default: m.Flashcards })));
+const StudyPlanner = lazy(() => loadPlanner().then(m => ({ default: m.StudyPlanner })));
+// Signed-in people (most visits) never need the sign-in screen's code
+const AuthPage = lazy(() => import('./components/AuthPage').then(m => ({ default: m.AuthPage })));
+const PRELOAD = [loadChat, loadDocumentsScreen, loadQuiz, loadExam, loadFlashcards, loadPlanner];
 
 // Mind maps pull in the large Mermaid library, so load that screen on demand
 const MindMapGenerator = lazy(() =>
@@ -75,10 +87,11 @@ const Workspace: React.FC = () => {
   // An invite link opens Study Rooms straight away
   const [pendingInvite, setPendingInvite] = useState<string | null>(() => takePendingInvite());
   const [currentView, setCurrentView] = useState<AppView>(() => (pendingInvite ? AppView.ROOMS : AppView.DASHBOARD));
-  const [documents, setDocuments] = useState<DocumentFile[]>([]);
+  // Documents from the last visit show at once; the list refreshes in the background
+  const [documents, setDocuments] = useState<DocumentFile[]>(() => cached<DocumentFile[]>(user?.id, 'documents') ?? []);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !cached(user?.id, 'documents'));
   const [loadError, setLoadError] = useState<string | null>(null);
   // A failed upload/delete, shown as a dismissable banner (instead of a browser alert)
   const [actionError, setActionError] = useState<string | null>(null);
@@ -100,6 +113,19 @@ const Workspace: React.FC = () => {
 
   useEffect(() => {
     loadDocuments();
+  }, []);
+  useEffect(() => {
+    if (!isLoading) saveCached(user?.id, 'documents', documents);
+  }, [documents, isLoading, user?.id]);
+
+  // Fetch the main screens' code while the app is idle, so opening them later is instant
+  useEffect(() => {
+    // Not on data saver or a very slow connection: there the bandwidth is better kept for what's on screen
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? '')) return;
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const idle = (cb: () => void) => (w.requestIdleCallback ? w.requestIdleCallback(cb) : w.setTimeout(cb, 1500));
+    idle(() => PRELOAD.reduce((p, load) => p.then(() => load().then(() => undefined, () => undefined)), Promise.resolve()));
   }, []);
 
   // Android back button: close the menu or a dialog first, then step back through the screens visited
@@ -146,7 +172,6 @@ const Workspace: React.FC = () => {
   const scrollRef = useLenis<HTMLDivElement>(!selfScrolling, displayedView);
 
   const loadDocuments = async () => {
-    setIsLoading(true);
     setLoadError(null);
     try {
       const docs = await documentsAPI.getAll();
@@ -466,7 +491,13 @@ const AppGate: React.FC = () => {
     );
   }
 
-  if (!user) return <AuthPage />;
+  if (!user) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-[100dvh] bg-slate-50"><LogoMark size={56} className="animate-float" /></div>}>
+        <AuthPage />
+      </Suspense>
+    );
+  }
 
   return <Workspace key={user.id} />;
 };

@@ -16,11 +16,20 @@ export default defineConfig({
       injectRegister: false,
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        // Only the app shell is downloaded up front (page, main code + styles, icons). Pre-storing every screen
+        // meant ~3.7 MB in the background on the first visit (and again after each update), hogging slow phone
+        // connections right when people start using the app. Screens are kept the first time they're opened.
+        globPatterns: ['index.html', 'assets/index-*.{js,css}', '*.{svg,ico,png,webmanifest}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
+          {
+            // Screen code, styles and images: file names change with their content, so a stored copy never goes stale
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/team/')),
+            handler: 'CacheFirst',
+            options: { cacheName: 'mindai-assets', expiration: { maxEntries: 250, maxAgeSeconds: 60 * 60 * 24 * 60 } },
+          },
           {
             urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
             handler: 'CacheFirst',
