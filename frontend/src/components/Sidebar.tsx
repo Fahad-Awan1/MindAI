@@ -143,10 +143,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
 
   // Slide the highlight pill to the active item (re-measured as sections fold and the rail resizes)
   useLayoutEffect(() => {
+    // A folded section still lays out its (clipped) items, so the pill would float over the next heading:
+    // no pill while the active item's section is folded (its title is highlighted instead). The desktop rail
+    // shows every item, folded or not.
+    const section = NAV_SECTIONS.find(s => s.items.some(i => i.view === currentView));
+    const folded = !!section && closed.includes(section.title) && !(rail && window.matchMedia('(min-width: 768px)').matches);
     const measure = () => {
       const list = listRef.current;
       const button = buttonRefs.current.get(currentView);
-      if (!list || !button || button.offsetParent === null) {
+      if (folded || !list || !button || button.offsetParent === null) {
         setPill(null);
         return;
       }
@@ -162,7 +167,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
       observer?.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, [currentView, rail]);
+    // Re-measured when sections fold / unfold too (the ResizeObserver also catches the end of the fold animation)
+  }, [currentView, rail, closed]);
 
   const handleNavClick = (view: AppView) => {
     onChangeView(view);
