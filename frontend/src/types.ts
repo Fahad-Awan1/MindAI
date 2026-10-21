@@ -85,6 +85,7 @@ export enum AppView {
   AUDIO = 'AUDIO',
   GRAPH = 'GRAPH',
   ROOMS = 'ROOMS',
+  PROJECTS = 'PROJECTS',
   ABOUT = 'ABOUT',
   // (The separate AI Study Group screen was folded into AI Chat's personalities)
 }
@@ -434,4 +435,56 @@ export interface ImportJob {
   error: string | null;
   created_at: number;
   updated_at: number;
+}
+
+// --- Chat history & projects ----------------------------------------------------------------------
+
+/** What a chat answers from: one document, every document, or a project's documents and instructions */
+export type ChatScope = 'document' | 'all' | 'project';
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  scope: ChatScope;
+  document_id: string | null;
+  document_title: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  pinned: boolean;
+  persona: string | null;
+  created_at: number;
+  updated_at: number;
+  /** Matching text, when the chat was found by searching its messages */
+  snippet?: string | null;
+}
+
+export interface ConversationDetail extends ConversationSummary {
+  messages: ChatMessage[];
+}
+
+export type ProjectColor = 'indigo' | 'violet' | 'sky' | 'emerald' | 'amber' | 'rose' | 'slate';
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+  color: ProjectColor;
+  created_at: number;
+  updated_at: number;
+  document_count: number;
+  chat_count: number;
+}
+
+export interface ProjectDetail extends Project {
+  documents: { id: string; title: string; type: string; created_at: number }[];
+  chats: ConversationSummary[];
+}
+
+/** Where the chat screen should open: an existing chat, or a new one (optionally in a project, optionally sending a first message) */
+export interface ChatTarget {
+  key: number;
+  conversationId?: string | null;
+  projectId?: string | null;
+  message?: string | null;
 }

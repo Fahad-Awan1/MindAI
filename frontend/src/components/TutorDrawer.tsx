@@ -34,7 +34,7 @@ export const TutorDrawer: React.FC<TutorDrawerProps> = ({ documentId, question, 
       icon={<Lightbulb className="w-5 h-5" />}
       placeholder="Ask a follow-up or answer the tutor's question..."
       onClose={onClose}
-      request={(history, followUp, options) => tutorAPI.explainMistake({
+      request={(history, followUp, options, conversationId) => tutorAPI.explainMistake({
         document_id: documentId,
         question: q.question,
         options: isChoice ? q.options! : [],
@@ -46,6 +46,7 @@ export const TutorDrawer: React.FC<TutorDrawerProps> = ({ documentId, question, 
         explanation: q.explanation || '',
         history,
         message: followUp,
+        conversation_id: conversationId,
       }, options)}
       context={
         <div className="bg-white rounded-2xl border border-slate-100 p-5 text-sm">

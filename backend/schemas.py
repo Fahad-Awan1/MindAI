@@ -297,6 +297,8 @@ class ExplainMistakeRequest(BaseModel):
     history: List[dict] = []
     # A follow-up question from the student; omitted for the first explanation
     message: Optional[str] = Field(default=None, max_length=4000)
+    # The saved chat this explanation continues (returned by the first answer)
+    conversation_id: Optional[str] = None
 
 
 class TeachBackRequest(BaseModel):

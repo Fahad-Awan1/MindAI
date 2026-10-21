@@ -52,6 +52,8 @@ _ADDED_COLUMNS = [
     ("users", "email_verified", "BOOLEAN NOT NULL DEFAULT 1"),
     ("users", "google_sub", "VARCHAR"),
     ("users", "token_version", "INTEGER NOT NULL DEFAULT 0"),
+    # Chat history: each message belongs to a conversation (older messages are grouped into chats on first use)
+    ("chat_messages", "conversation_id", "VARCHAR"),
 ]
 
 
@@ -65,3 +67,5 @@ def _add_missing_columns():
                 if column not in existing:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}"))
                     print(f"Added column {table}.{column}")
+        # Indexes for columns added above (create_all() only indexes tables it creates)
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_messages_conversation_id ON chat_messages (conversation_id)"))

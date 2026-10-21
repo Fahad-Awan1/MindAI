@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useBackHandler } from '../hooks/useBackHandler';
-import { getErrorMessage, ChatHistoryItem, StreamOptions } from '../services/api';
+import { getErrorMessage, ChatHistoryItem, StreamOptions, requestOpenChat } from '../services/api';
 import { MarkdownMessage } from './MarkdownMessage';
 import { SpeakButton } from './SpeakButton';
 import { LogoMark } from './Logo';
 import { ChatComposer } from './chat/ChatComposer';
-import { X } from 'lucide-react';
+import { MessageSquareText, X } from 'lucide-react';
 
 interface TutorMessage {
   role: 'user' | 'model';
@@ -19,8 +19,11 @@ export interface TutorChatProps {
   icon: React.ReactNode;
   /** Shown above the conversation (e.g. the question or highlighted passage) */
   context: React.ReactNode;
-  /** Stream an answer. `followUp` is undefined for the first, automatic answer. */
-  request: (history: ChatHistoryItem[], followUp: string | undefined, options: StreamOptions) => Promise<unknown>;
+  /**
+   * Stream an answer. `followUp` is undefined for the first, automatic answer. `conversationId` is the saved
+   * chat this conversation is kept in (null until the first answer has created it).
+   */
+  request: (history: ChatHistoryItem[], followUp: string | undefined, options: StreamOptions, conversationId: string | null) => Promise<unknown>;
   placeholder?: string;
   onClose: () => void;
 }
@@ -30,6 +33,9 @@ export const TutorChat: React.FC<TutorChatProps> = ({ title, subtitle, icon, con
   const [messages, setMessages] = useState<TutorMessage[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  // The chat history entry this conversation is saved in (lets it continue in AI Chat)
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const conversationRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -45,12 +51,17 @@ export const TutorChat: React.FC<TutorChatProps> = ({ title, subtitle, icon, con
     try {
       await request(history, followUp, {
         signal: controller.signal,
+        onConversation: chat => {
+          if (abortRef.current !== controller) return;
+          conversationRef.current = chat.id;
+          setConversationId(chat.id);
+        },
         onDelta: piece => {
           if (abortRef.current !== controller) return;
           received += piece;
           setMessages(prev => prev.map((m, i) => (i === prev.length - 1 ? { ...m, text: m.text + piece } : m)));
         },
-      });
+      }, conversationRef.current);
     } catch (err) {
       // A newer request replaced this one (e.g. effect re-run): leave its state alone
       if (abortRef.current !== controller) return;
@@ -108,9 +119,17 @@ export const TutorChat: React.FC<TutorChatProps> = ({ title, subtitle, icon, con
               <p className="text-xs text-slate-400 truncate">{subtitle}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {conversationId && !isStreaming && (
+              <button onClick={() => { onClose(); requestOpenChat(conversationId); }} title="Continue this conversation in AI Chat (it is saved in your chat history)"
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50">
+                <MessageSquareText className="w-4 h-4" /> <span className="hidden sm:inline">Open in AI Chat</span><span className="sm:hidden">Open in chat</span>
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" aria-label="Close">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5" data-lenis-prevent>

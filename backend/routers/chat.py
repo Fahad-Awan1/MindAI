@@ -3,8 +3,6 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from typing import Dict, List, Optional
 import json
-import time
-import uuid
 from database import get_db, SessionLocal
 from models import Document, ChatMessage, User
 from schemas import ChatRequest, ChatResponse, ChatMessage as ChatMessageSchema
@@ -19,6 +17,13 @@ from services.groq_service import (
 )
 from services.streaming import stream_answer, streaming_response
 from services.auth_service import get_current_user, get_user_document
+from services.conversation_service import (
+    backfill_conversations,
+    create_conversation,
+    latest_legacy_conversation,
+    save_messages,
+    title_from_text,
+)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -33,32 +38,19 @@ def save_exchange(
     sources: Optional[List[Dict]] = None,
     persona: Optional[str] = None,
 ) -> str:
-    """Persist a user message and the model's reply (with its cited sources); return the model message ID."""
-    now_ms = int(time.time() * 1000)
-    model_msg_id = f"{uuid.uuid4().hex}_model"
+    """
+    Persist a user message and the model's reply (with its cited sources); return the model message ID.
 
-    db.add(ChatMessage(
-        id=f"{uuid.uuid4().hex}_user",
-        document_id=document_id,
-        user_id=user_id,
-        role="user",
-        text=user_text,
-        timestamp=now_ms,
-        is_knowledge_base=is_knowledge_base
-    ))
-    db.add(ChatMessage(
-        id=model_msg_id,
-        document_id=document_id,
-        user_id=user_id,
-        role="model",
-        text=normalize_citations(model_text),
-        timestamp=now_ms + 1,
-        is_knowledge_base=is_knowledge_base,
-        sources=json.dumps(sources) if sources else None,
-        persona=persona,
-    ))
-    db.commit()
-    return model_msg_id
+    These are the old one-thread-per-document endpoints (still used by app versions without chat history):
+    the exchange goes into that document's most recent chat, or a new one.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    backfill_conversations(db, user_id)  # Older messages first become their chats, so this one joins the right thread
+    conversation = latest_legacy_conversation(db, user, document_id, is_knowledge_base)
+    if conversation is None:
+        conversation = create_conversation(db, user, "all" if is_knowledge_base else "document", document_id,
+                                           persona=persona, title=title_from_text(user_text))
+    return save_messages(db, conversation.id, user_id, user_text, normalize_citations(model_text), sources, persona)
 
 
 # How each AI personality answers in a one-to-one chat
@@ -232,13 +224,10 @@ def get_knowledge_base_history(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get knowledge base chat history."""
-    messages = db.query(ChatMessage).filter(
-        ChatMessage.is_knowledge_base == True,
-        ChatMessage.user_id == user.id
-    ).order_by(ChatMessage.timestamp).all()
-
-    return _to_schema(messages)
+    """Get the latest "all documents" chat (old app versions; new ones use /api/conversations)."""
+    backfill_conversations(db, user.id)
+    conversation = latest_legacy_conversation(db, user, None, True)
+    return _to_schema(conversation.messages if conversation else [])
 
 
 @router.get("/history/{doc_id}", response_model=List[ChatMessageSchema])
@@ -247,11 +236,8 @@ def get_chat_history(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get chat history for a document."""
+    """Get the latest chat about a document (old app versions; new ones use /api/conversations)."""
     get_user_document(db, user, doc_id)
-    messages = db.query(ChatMessage).filter(
-        ChatMessage.document_id == doc_id,
-        ChatMessage.user_id == user.id
-    ).order_by(ChatMessage.timestamp).all()
-
-    return _to_schema(messages)
+    backfill_conversations(db, user.id)
+    conversation = latest_legacy_conversation(db, user, doc_id, False)
+    return _to_schema(conversation.messages if conversation else [])

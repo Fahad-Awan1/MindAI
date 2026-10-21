@@ -67,6 +67,9 @@ class Document(Base):
     concept_map = relationship("ConceptMap", back_populates="document", uselist=False, cascade="all, delete-orphan")
     # Unshared from every room when the document is deleted
     room_shares = relationship("RoomDocument", back_populates="document", cascade="all, delete-orphan")
+    # Chats about this one document go with it; it is taken out of every project
+    conversations = relationship("Conversation", back_populates="document", cascade="all, delete-orphan")
+    project_links = relationship("ProjectDocument", back_populates="document", cascade="all, delete-orphan")
 
 
 class ChatMessage(Base):
@@ -93,9 +96,11 @@ class ChatMessage(Base):
     persona = Column(String, nullable=True)  # AI personality that wrote a model reply (None = MindAI)
     is_knowledge_base = Column(Boolean, default=False)  # True if knowledge base chat
     sources = Column(Text, nullable=True)  # JSON list of cited source passages (model messages)
-    
+    conversation_id = Column(String, ForeignKey("conversations.id"), nullable=True, index=True)  # The chat it belongs to
+
     # Relationships
     document = relationship("Document", back_populates="chat_messages")
+    conversation = relationship("Conversation", back_populates="messages")
 
 
 class StudySet(Base):
@@ -420,3 +425,65 @@ class EmailCode(Base):
     attempts = Column(Integer, nullable=False, default=0)
     created_at = Column(BigInteger, nullable=False)
     used_at = Column(BigInteger, nullable=True)
+
+
+class Project(Base):
+    """
+    A workspace like a ChatGPT / Claude project: its own documents, standing instructions for the AI, and chats.
+
+    A document can belong to several projects (ProjectDocument); deleting a project deletes its chats, not its documents.
+    """
+    __tablename__ = "projects"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    instructions = Column(Text, nullable=True)  # Added to the AI's system prompt in every chat of the project
+    color = Column(String, nullable=True)
+    created_at = Column(BigInteger, nullable=False)
+    updated_at = Column(BigInteger, nullable=False)
+
+    document_links = relationship("ProjectDocument", back_populates="project", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="project", cascade="all, delete-orphan")
+
+
+class ProjectDocument(Base):
+    """A document added to a project's knowledge."""
+    __tablename__ = "project_documents"
+
+    project_id = Column(String, ForeignKey("projects.id"), primary_key=True)
+    document_id = Column(String, ForeignKey("documents.id"), primary_key=True)
+    added_at = Column(BigInteger, nullable=False)
+
+    project = relationship("Project", back_populates="document_links")
+    document = relationship("Document", back_populates="project_links")
+
+
+class Conversation(Base):
+    """
+    One chat thread in the history list.
+
+    scope says what the AI answers from:
+        "document"  one document (document_id)
+        "all"       every document the user has
+        "project"   the project's documents and instructions (project_id)
+    """
+    __tablename__ = "conversations"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    scope = Column(String, nullable=False, default="document")
+    document_id = Column(String, ForeignKey("documents.id"), nullable=True, index=True)
+    project_id = Column(String, ForeignKey("projects.id"), nullable=True, index=True)
+    title = Column(String, nullable=False, default="New chat")
+    title_is_auto = Column(Boolean, nullable=False, default=True)  # False once the user renames it
+    pinned = Column(Boolean, nullable=False, default=False)
+    persona = Column(String, nullable=True)  # Who answered last (kept when the chat is reopened)
+    created_at = Column(BigInteger, nullable=False)
+    updated_at = Column(BigInteger, nullable=False, index=True)
+
+    document = relationship("Document", back_populates="conversations")
+    project = relationship("Project", back_populates="conversations")
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan",
+                            order_by="ChatMessage.timestamp")

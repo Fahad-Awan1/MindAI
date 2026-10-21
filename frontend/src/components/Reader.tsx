@@ -341,12 +341,13 @@ export const Reader: React.FC<ReaderProps> = ({ documents, focus, onFocusConsume
           subtitle={currentDoc?.title ?? ''}
           icon={panel.action === 'explain' ? <Lightbulb className="w-5 h-5" /> : <Wand2 className="w-5 h-5" />}
           onClose={() => setPanel(null)}
-          request={(history, followUp, options) => tutorAPI.selection({
+          request={(history, followUp, options, conversationId) => tutorAPI.selection({
             document_id: docId,
             selection: panel.text,
             action: panel.action,
             history,
             message: followUp,
+            conversation_id: conversationId,
           }, options)}
           context={
             <blockquote className="bg-white rounded-2xl border border-slate-100 border-l-4 border-l-amber-300 p-4 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto font-serif">

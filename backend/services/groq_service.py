@@ -255,6 +255,51 @@ KNOWLEDGE BASE CONTEXT:
     return messages
 
 
+def build_project_messages(
+    history: List[Dict],
+    message: str,
+    rag_context: str,
+    project_name: str,
+    description: str = "",
+    instructions: str = "",
+    has_documents: bool = True,
+) -> List[Dict]:
+    """Build the Groq messages for a chat inside a project: its documents plus the student's standing instructions."""
+    about = f"\nWhat this project is about: {description.strip()}" if description and description.strip() else ""
+    rules = (f"\n\nTHE STUDENT'S INSTRUCTIONS FOR THIS PROJECT (follow them in every answer):\n{instructions.strip()}"
+             if instructions and instructions.strip() else "")
+    if has_documents:
+        grounding = ("Answer from the project's documents below and cite them. If they don't cover the question, say so, "
+                     "then give a short general answer clearly marked as not from the documents.")
+        found = rag_context if rag_context else "(No relevant passage was found in the project documents.)"
+        context = f"\n\nPROJECT DOCUMENTS CONTEXT:\n{found}"
+    else:
+        grounding = "The project has no documents yet, so answer as a knowledgeable, accurate study tutor."
+        context = ""
+    system_message = f"""You are MindAI, a study assistant working inside the student's project "{project_name}".{about}
+{grounding}
+{MARKDOWN_INSTRUCTION}
+{CITATION_INSTRUCTION if rag_context else ""}{rules}{context}"""
+
+    messages = [{"role": "system", "content": system_message}]
+    messages.extend(_convert_history(history))
+    messages.append({"role": "user", "content": message})
+    return messages
+
+
+async def generate_chat_title(first_message: str, answer: str) -> str:
+    """A short title (at most ~6 words) for a chat, from its first question and answer."""
+    messages = [
+        {"role": "system", "content": "You name chat conversations. Reply with ONLY a short title of 2 to 6 words naming the topic "
+                                      "the student ASKED about (their question), not details or follow-up questions from the answer. "
+                                      "Use the language of the question. No quotes, no ending punctuation, no emoji."},
+        {"role": "user", "content": f"Student's question: {first_message[:1500]}\n\n(Start of the answer, for context only: {answer[:400]})"},
+    ]
+    # gpt-oss spends part of max_tokens on (light) reasoning, so leave room beyond the few words of the title
+    title = await _complete(messages, temperature=0.3, max_tokens=400)
+    return title
+
+
 async def chat_with_document(
     history: List[Dict],
     content: str,

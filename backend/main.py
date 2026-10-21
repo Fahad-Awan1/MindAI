@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
 from config import get_settings
-from routers import auth, documents, chat, ai_features, study_sets, tutor, voice, audio, graph, rooms, study_group, imports, assessment, exams, bank
+from routers import auth, documents, chat, conversations, projects, ai_features, study_sets, tutor, voice, audio, graph, rooms, study_group, imports, assessment, exams, bank
 
 settings = get_settings()
 
@@ -88,6 +88,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
+app.include_router(conversations.router)
+app.include_router(projects.router)
 app.include_router(ai_features.router)
 app.include_router(study_sets.router)
 app.include_router(tutor.router)

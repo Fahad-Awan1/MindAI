@@ -4,7 +4,7 @@ import {
   AnswerValue, AttemptResult, ExamStreamRequest, GenerationEvent, ItemResult, Question,
   QuizMode, QuizQuestionType, QuizStreamRequest, ResponseItem, DifficultySetting, ExamAttempt, MarkingEvent, QuestionMark,
 } from '../assessment/types';
-import { DocumentFile, ChatMessage, Flashcard, QuizQuestion, StudyTask, StudySet, StudySetKind, StudySetSummary, StudyActivity, Progress, CardSchedule, DueQueue, ReviewRating, TopicStat, TeachBackData, Source, DocumentSegment, AudioOverviewData, ConceptGraph, RoomSummary, RoomDetail, RoomMessage, InvitePreview, Persona, ImportJob } from '../types';
+import { DocumentFile, ChatMessage, Flashcard, QuizQuestion, StudyTask, StudySet, StudySetKind, StudySetSummary, StudyActivity, Progress, CardSchedule, DueQueue, ReviewRating, TopicStat, TeachBackData, Source, DocumentSegment, AudioOverviewData, ConceptGraph, RoomSummary, RoomDetail, RoomMessage, InvitePreview, Persona, ImportJob, ConversationSummary, ConversationDetail, Project, ProjectDetail, ChatScope } from '../types';
 import { saveFile } from './platform';
 
 // Same origin by default: the Vite dev server proxies /api (and WebSockets) to the backend.
@@ -167,6 +167,8 @@ export interface StreamOptions {
   onDelta: (text: string) => void;
   /** Numbered passages the answer may cite as [n] (sent before the answer) */
   onSources?: (sources: Source[]) => void;
+  /** The saved chat the answer belongs to (Reader explanations, "Explain my mistake") */
+  onConversation?: (conversation: ConversationSummary) => void;
   signal?: AbortSignal;
 }
 
@@ -180,13 +182,14 @@ type StreamEvent =
  * POST to a streaming endpoint and read its NDJSON events, calling `onDelta` for each text piece.
  * Resolves with the saved chat message ID; rejects with StreamError (or AbortError if aborted).
  */
-export const streamChat = async (path: string, body: unknown, { onDelta, onSources, signal }: StreamOptions): Promise<{ chat_id: string }> => {
+export const streamChat = async (path: string, body: unknown, { onDelta, onSources, onConversation, signal }: StreamOptions): Promise<{ chat_id: string }> => {
   const reader = await openStream(path, body, signal);
   let chatId = '';
   let done = false;
   await readLines(reader, line => {
-    const event = JSON.parse(line) as StreamEvent;
-    if (event.type === 'sources') onSources?.(event.sources);
+    const event = JSON.parse(line) as StreamEvent | { type: 'conversation'; conversation: ConversationSummary };
+    if (event.type === 'conversation') onConversation?.(event.conversation);
+    else if (event.type === 'sources') onSources?.(event.sources);
     else if (event.type === 'delta') onDelta(event.text);
     else if (event.type === 'done') { chatId = event.chat_id; done = true; }
     else if (event.type === 'error') throw new StreamError(event.detail || 'The AI service failed.');
@@ -211,6 +214,94 @@ export const chatAPI = {
     const response = await api.get('/api/chat/history');
     return response.data;
   }
+};
+
+// Chat history: saved chats you can reopen and continue
+export interface SendOptions extends StreamOptions {
+  /** The chat the answer belongs to (sent first; a new chat is created on the first message) */
+  onConversation?: (conversation: ConversationSummary) => void;
+  /** A better title, chosen after a new chat's first answer */
+  onTitle?: (conversationId: string, title: string) => void;
+}
+
+export interface SendBody {
+  conversation_id?: string | null;
+  scope?: ChatScope;
+  document_id?: string | null;
+  project_id?: string | null;
+  message: string;
+  persona?: string | null;
+}
+
+type ConversationEvent =
+  | StreamEvent
+  | { type: 'conversation'; conversation: ConversationSummary }
+  | { type: 'title'; conversation_id: string; title: string };
+
+/** Ask the app to open a saved chat in AI Chat (from drawers anywhere in the app) */
+export const OPEN_CHAT_EVENT = 'mindai:open-chat';
+export const requestOpenChat = (conversationId: string) =>
+  window.dispatchEvent(new CustomEvent<string>(OPEN_CHAT_EVENT, { detail: conversationId }));
+
+export const conversationsAPI = {
+  list: async (params: { projectId?: string; q?: string; limit?: number } = {}): Promise<ConversationSummary[]> => {
+    const response = await api.get('/api/conversations', { params: { project_id: params.projectId, q: params.q || undefined, limit: params.limit } });
+    return response.data;
+  },
+
+  get: async (id: string): Promise<ConversationDetail> => {
+    const response = await api.get(`/api/conversations/${id}`);
+    return response.data;
+  },
+
+  rename: async (id: string, title: string): Promise<ConversationSummary> => {
+    const response = await api.patch(`/api/conversations/${id}`, { title });
+    return response.data;
+  },
+
+  setPinned: async (id: string, pinned: boolean): Promise<ConversationSummary> => {
+    const response = await api.patch(`/api/conversations/${id}`, { pinned });
+    return response.data;
+  },
+
+  /** Move into a project, or out of one (projectId null) */
+  move: async (id: string, projectId: string | null): Promise<ConversationSummary> => {
+    const response = await api.patch(`/api/conversations/${id}`, { move: true, project_id: projectId });
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/api/conversations/${id}`);
+  },
+
+  /** Ask in a chat (new when conversation_id is empty) and stream the answer. Rejects with StreamError / AbortError. */
+  send: async (body: SendBody, { onDelta, onSources, onConversation, onTitle, signal }: SendOptions): Promise<{ chat_id: string }> => {
+    const reader = await openStream('/api/conversations/stream', body, signal);
+    let chatId = '';
+    let done = false;
+    await readLines(reader, line => {
+      const event = JSON.parse(line) as ConversationEvent;
+      if (event.type === 'conversation') onConversation?.(event.conversation);
+      else if (event.type === 'sources') onSources?.(event.sources);
+      else if (event.type === 'delta') onDelta(event.text);
+      else if (event.type === 'done') { chatId = event.chat_id; done = true; }
+      else if (event.type === 'title') onTitle?.(event.conversation_id, event.title);
+      else if (event.type === 'error') throw new StreamError(event.detail || 'The AI service failed.');
+    }, () => done);
+    return { chat_id: chatId };
+  },
+};
+
+export const projectsAPI = {
+  list: async (): Promise<Project[]> => (await api.get('/api/projects')).data,
+  get: async (id: string): Promise<ProjectDetail> => (await api.get(`/api/projects/${id}`)).data,
+  create: async (body: { name: string; description?: string; instructions?: string; color?: string }): Promise<Project> =>
+    (await api.post('/api/projects', body)).data,
+  update: async (id: string, body: Partial<Pick<Project, 'name' | 'description' | 'instructions' | 'color'>>): Promise<Project> =>
+    (await api.patch(`/api/projects/${id}`, body)).data,
+  delete: async (id: string) => { await api.delete(`/api/projects/${id}`); },
+  addDocument: async (id: string, documentId: string) => { await api.put(`/api/projects/${id}/documents/${documentId}`); },
+  removeDocument: async (id: string, documentId: string) => { await api.delete(`/api/projects/${id}/documents/${documentId}`); },
 };
 
 // AI Features API - every generation is saved as a study set and returned
@@ -308,6 +399,8 @@ export interface ExplainMistakeBody {
   explanation: string;
   history: ChatHistoryItem[];
   message?: string;
+  // The saved chat this explanation continues
+  conversation_id?: string | null;
   /** Non-multiple-choice questions send the answers as text */
   question_type?: string;
   correct_answer_text?: string;
@@ -324,7 +417,7 @@ export const tutorAPI = {
   },
 
   /** Explain or simplify a highlighted passage (streams; supports follow-ups) */
-  selection: (body: { document_id: string; selection: string; action: 'explain' | 'simplify'; history: ChatHistoryItem[]; message?: string }, options: StreamOptions) =>
+  selection: (body: { document_id: string; selection: string; action: 'explain' | 'simplify'; history: ChatHistoryItem[]; message?: string; conversation_id?: string | null }, options: StreamOptions) =>
     streamChat('/api/tutor/selection/stream', body, options),
 
   /** Turn a highlighted passage into flashcards in the document's Highlights deck */

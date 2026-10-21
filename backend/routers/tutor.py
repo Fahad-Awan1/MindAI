@@ -7,7 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import SessionLocal, get_db
 from models import Document, StudySet, User
 from schemas import ExplainMistakeRequest, StudySetResponse, TeachBackRequest
 from services.groq_service import (
@@ -22,6 +22,7 @@ from services.groq_service import (
 from services.rag_service import rag_service
 from services.streaming import stream_answer, streaming_response
 from services.auth_service import get_current_user, get_user_document
+from services.conversation_service import side_chat, title_from_text
 from services.study_service import create_study_set, record_activity, to_response
 
 router = APIRouter(prefix="/api/tutor", tags=["tutor"])
@@ -69,7 +70,16 @@ async def explain_mistake(request: ExplainMistakeRequest, user: User = Depends(g
         correct_text=request.correct_answer_text,
         student_text=request.student_answer_text,
     )
-    return streaming_response(stream_answer(messages))
+    # Kept in the chat history (and continued in AI Chat if the student wants)
+    chosen = request.options[request.chosen_index] if 0 <= request.chosen_index < len(request.options) else ""
+    mine = chosen or request.student_answer_text or "(no answer)"
+    right = correct_option or request.correct_answer_text or ""
+    asked = request.message or (f"Why is my answer wrong?\n\n**Question:** {request.question}\n\n"
+                                f"**My answer:** {mine}\n\n**Correct answer:** {right}")
+    info, persist = side_chat(db, user, document.id, request.conversation_id,
+                              f"Mistake: {title_from_text(request.question, 50)}", asked, SessionLocal)
+    return streaming_response(stream_answer(messages, on_finish=persist,
+                                            prelude=[{"type": "conversation", "conversation": info}]))
 
 
 @router.get("/concepts", response_model=List[str])
@@ -127,6 +137,8 @@ class SelectionStreamRequest(SelectionRequest):
     action: Literal["explain", "simplify"]
     history: List[dict] = []
     message: Optional[str] = Field(default=None, max_length=4000)
+    # The saved chat this explanation continues (returned by the first answer)
+    conversation_id: Optional[str] = None
 
 
 class SelectionQuizRequest(SelectionRequest):
@@ -142,7 +154,14 @@ async def explain_selection(request: SelectionStreamRequest, user: User = Depend
     document = get_document(db, user, request.document_id)
     context = await document_context(document, request.selection)
     messages = build_selection_messages(request.action, request.selection, context, request.history, request.message)
-    return streaming_response(stream_answer(messages))
+    # Kept in the chat history (and continued in AI Chat if the student wants)
+    verb = "Explain" if request.action == "explain" else "Simplify"
+    passage = " ".join(request.selection.split())
+    asked = request.message or f'{verb} this passage:\n\n> {passage}'
+    info, persist = side_chat(db, user, document.id, request.conversation_id,
+                              f"{verb}: {title_from_text(passage, 50)}", asked, SessionLocal)
+    return streaming_response(stream_answer(messages, on_finish=persist,
+                                            prelude=[{"type": "conversation", "conversation": info}]))
 
 
 @router.post("/selection/flashcards", response_model=StudySetResponse)

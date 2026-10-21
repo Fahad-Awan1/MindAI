@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   Download,
   Info,
+  FolderOpen,
 } from 'lucide-react';
 import { promptInstall, watchInstallable } from '../services/platform';
 
@@ -53,6 +54,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     title: 'Learn together',
     items: [
       { view: AppView.CHAT, icon: MessageSquareText, label: 'AI Chat', tip: 'Chat with your documents' },
+      { view: AppView.PROJECTS, icon: FolderOpen, label: 'Projects', tip: 'A course or exam with its own documents, instructions and chats' },
       { view: AppView.ROOMS, icon: Users, label: 'Study Rooms', tip: 'Study live with classmates' },
     ],
   },

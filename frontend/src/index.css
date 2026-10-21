@@ -109,3 +109,8 @@ html.keyboard-open [role="dialog"].fixed { bottom: var(--keyboard-inset, 0px); }
     radial-gradient(farthest-side at 0 50%, rgba(15, 23, 42, 0.18), transparent) left center / 0.9rem 100% no-repeat scroll,
     radial-gradient(farthest-side at 100% 50%, rgba(15, 23, 42, 0.18), transparent) right center / 0.9rem 100% no-repeat scroll;
 }
+
+/* Chat history drawer sliding in from the left (phones) */
+.drawer-in { animation: drawer-in 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes drawer-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .drawer-in { animation: none; } }
