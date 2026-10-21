@@ -5,3 +5,6 @@ dist/
 .env
 .env.local
 mobile-check-shots/
+
+.vercel
+.env*

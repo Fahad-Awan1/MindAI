@@ -74,8 +74,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    # Also allow any local dev port (e.g. Vite falling back to 5174) and the Cloudflare tunnel address
-    allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://[a-z0-9-]+\.trycloudflare\.com)$",
+    # Also allow any local dev port (e.g. Vite falling back to 5174), the Cloudflare tunnel address
+    # and the web app on Vercel (production and preview URLs of the "mindai" project)
+    allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://[a-z0-9-]+\.trycloudflare\.com|https://mindai[a-z0-9-]*\.vercel\.app)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
