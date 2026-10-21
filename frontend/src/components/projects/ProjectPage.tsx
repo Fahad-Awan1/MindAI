@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft, ArrowUp, Check, FileText, FolderOpen, Loader2, MessageSquareText, Pencil, Plus, Trash2, Upload, X,
 } from 'lucide-react';
@@ -20,6 +20,10 @@ interface ProjectPageProps {
   onOpenChat: (conversationId: string) => void;
   /** Open a new chat in the project, optionally sending a first message */
   onStartChat: (projectId: string, message?: string) => void;
+  /** What is already known (shown at once while the full project loads) */
+  initial?: ProjectDetail | null;
+  /** `initial` is complete (a project just created): its documents need no loading */
+  initialComplete?: boolean;
 }
 
 const UPLOAD_ACCEPT = '.txt,.md,.pdf,.docx,.pptx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation';
@@ -119,13 +123,16 @@ export const ProjectForm: React.FC<{
 // --- One project (shown inside AI Chat) -------------------------------------------------------------
 
 /** A project's page: start a chat in it, its chats, its instructions for the AI and its documents */
-export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, onBack, onChanged, onDeleted, onUpload, onOpenChat, onStartChat }) => {
-  const [project, setProject] = useState<ProjectDetail | null>(null);
+export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, onBack, onChanged, onDeleted, onUpload, onOpenChat, onStartChat, initial, initialComplete }) => {
+  const [project, setProject] = useState<ProjectDetail | null>(initial ?? null);
+  // The project's documents have arrived from the server (until then that section shows a spinner)
+  const [loaded, setLoaded] = useState(!!initialComplete);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [question, setQuestion] = useState('');
-  const [instructions, setInstructions] = useState('');
+  const [instructions, setInstructions] = useState(initial?.instructions ?? '');
+  const instructionsEdited = useRef(false);
   const [savingInstructions, setSavingInstructions] = useState(false);
   const [adding, setAdding] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -136,7 +143,9 @@ export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, 
     try {
       const detail = await projectsAPI.get(projectId);
       setProject(detail);
-      setInstructions(detail.instructions);
+      setLoaded(true);
+      // Don't overwrite instructions the student is typing
+      if (!instructionsEdited.current) setInstructions(detail.instructions);
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err, 'Could not open the project.'));
@@ -168,6 +177,20 @@ export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, 
       await load();
       onChanged();
     } catch (err) {
+      setNotice(`${failure}: ${getErrorMessage(err, 'please try again.')}`);
+    }
+  };
+
+  /** Show a document added / removed at once; undo it if the server says no */
+  const changeDocuments = async (next: ProjectDetail['documents'], action: () => Promise<void>, failure: string) => {
+    const before = project.documents;
+    setProject(p => (p ? { ...p, documents: next, document_count: next.length } : p));
+    setNotice(null);
+    try {
+      await action();
+      onChanged();
+    } catch (err) {
+      setProject(p => (p ? { ...p, documents: before, document_count: before.length } : p));
       setNotice(`${failure}: ${getErrorMessage(err, 'please try again.')}`);
     }
   };
@@ -212,9 +235,10 @@ export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, 
         </button>
       </form>
 
-      <div className="grid md:grid-cols-5 gap-6">
+      {/* grid-cols-1 = minmax(0, 1fr): on a phone a long document name must not stretch the column past the screen */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         {/* Chats */}
-        <section className="md:col-span-3">
+        <section className="md:col-span-3 min-w-0">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Chats <span className="text-slate-400 font-semibold">· {project.chats.length}</span></h2>
             <button onClick={() => onStartChat(project.id)} className={`flex items-center gap-1 text-sm font-bold ${color.text}`}><Plus className="w-4 h-4" /> New chat</button>
@@ -236,19 +260,19 @@ export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, 
           )}
         </section>
 
-        <div className="md:col-span-2 space-y-6">
+        <div className="md:col-span-2 space-y-6 min-w-0">
           {/* Instructions */}
           <section className="rounded-2xl bg-white border border-slate-100 shadow-sm p-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1">Instructions</h2>
             <p className="text-xs text-slate-400 mb-2">MindAI follows these in every chat of this project.</p>
-            <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={5} maxLength={4000}
+            <textarea value={instructions} onChange={e => { instructionsEdited.current = true; setInstructions(e.target.value); }} rows={5} maxLength={4000}
               placeholder="e.g. Answer in simple English and end with one practice question."
               className="w-full rounded-xl border-slate-200 text-sm focus:border-indigo-400 focus:ring-indigo-500/20" />
             {instructionsDirty && (
               <div className="flex justify-end gap-2 mt-2">
-                <button onClick={() => setInstructions(project.instructions)} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-100">Discard</button>
+                <button onClick={() => { instructionsEdited.current = false; setInstructions(project.instructions); }} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-500 hover:bg-slate-100">Discard</button>
                 <button disabled={savingInstructions}
-                  onClick={async () => { setSavingInstructions(true); await run(() => projectsAPI.update(project.id, { instructions }).then(() => undefined), "Couldn't save the instructions"); setSavingInstructions(false); }}
+                  onClick={async () => { setSavingInstructions(true); instructionsEdited.current = false; await run(() => projectsAPI.update(project.id, { instructions }).then(() => undefined), "Couldn't save the instructions"); setSavingInstructions(false); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm font-semibold disabled:opacity-60">
                   {savingInstructions && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Save
                 </button>
@@ -258,15 +282,18 @@ export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, 
 
           {/* Documents */}
           <section className="rounded-2xl bg-white border border-slate-100 shadow-sm p-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1">Documents <span className="text-slate-400 font-semibold">· {project.documents.length}</span></h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-1">Documents <span className="text-slate-400 font-semibold">· {loaded ? project.documents.length : project.document_count}</span></h2>
             <p className="text-xs text-slate-400 mb-3">Chats in this project answer from these.</p>
+            {!loaded ? (
+              <p className="flex items-center gap-2 py-2 text-sm text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading documents…</p>
+            ) : (<>
             {project.documents.length > 0 && (
               <ul className="space-y-1 mb-3">
                 {project.documents.map(doc => (
                   <li key={doc.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50">
                     <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
                     <span className="flex-1 min-w-0 truncate text-sm text-slate-700">{doc.title}</span>
-                    <button onClick={() => run(() => projectsAPI.removeDocument(project.id, doc.id), "Couldn't remove the document")}
+                    <button onClick={() => changeDocuments(project.documents.filter(d => d.id !== doc.id), () => projectsAPI.removeDocument(project.id, doc.id), "Couldn't remove the document")}
                       className="p-1.5 rounded-md text-slate-300 hover:text-rose-500 hover:bg-rose-50" aria-label={`Remove ${doc.title} from the project`}>
                       <X className="w-4 h-4" />
                     </button>
@@ -277,12 +304,17 @@ export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, 
             {addable.length > 0 && (
               <div className="flex gap-2 mb-2">
                 <select value={adding} onChange={e => setAdding(e.target.value)} aria-label="Add a document from your library"
-                  className="flex-1 min-w-0 rounded-lg border-slate-200 text-sm py-2">
+                  className="flex-1 min-w-0 w-full rounded-lg border-slate-200 text-sm py-2 truncate">
                   <option value="">Add from your library…</option>
                   {addable.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}
                 </select>
                 <button disabled={!adding} aria-label="Add document"
-                  onClick={() => { const id = adding; setAdding(''); run(() => projectsAPI.addDocument(project.id, id), "Couldn't add the document"); }}
+                  onClick={() => {
+                    const doc = documents.find(d => d.id === adding);
+                    setAdding('');
+                    if (doc) changeDocuments([{ id: doc.id, title: doc.title, type: doc.type, created_at: doc.created_at }, ...project.documents],
+                      () => projectsAPI.addDocument(project.id, doc.id), "Couldn't add the document");
+                  }}
                   className="px-3 rounded-lg bg-slate-900 text-white disabled:opacity-40"><Plus className="w-4 h-4" /></button>
               </div>
             )}
@@ -299,6 +331,7 @@ export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, 
                 setUploading(false);
               }} />
             </label>
+            </>)}
           </section>
 
           {/* Delete */}

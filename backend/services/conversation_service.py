@@ -12,7 +12,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from models import ChatMessage, Conversation, Document, Project, ProjectDocument, User
 from services.auth_service import get_user_document
@@ -282,7 +282,12 @@ def _snippet(text: str, query: str, width: int = 90) -> str:
 def list_conversations(db: Session, user: User, project_id: Optional[str] = None, query: str = "",
                        limit: int = 50, offset: int = 0) -> List[Dict]:
     backfill_conversations(db, user.id)
-    base = db.query(Conversation).filter(Conversation.user_id == user.id)
+    # Each row shows its document's / project's name: fetch just those names in the same query
+    # (not one query per chat, and never the documents' full text)
+    base = (db.query(Conversation)
+            .options(joinedload(Conversation.document).load_only(Document.id, Document.title),
+                     joinedload(Conversation.project).load_only(Project.id, Project.name))
+            .filter(Conversation.user_id == user.id))
     if project_id:
         base = base.filter(Conversation.project_id == project_id)
     query = (query or "").strip()

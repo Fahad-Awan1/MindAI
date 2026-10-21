@@ -3,6 +3,7 @@ import { AuthResult, authAPI, User } from '../services/api';
 import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
 import { getCachedUser, getToken, onUnauthorized, restoreNativeSession, setCachedUser, setToken } from '../services/authToken';
+import { clearChatCache } from '../services/chatCache';
 
 interface AuthContextValue {
   user: User | null;
@@ -97,11 +98,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     finish(await authAPI.signup(name, email, password)), [finish]);
 
   const logout = useCallback(() => {
+    // A shared phone must not keep showing this account's chat titles
+    if (user) clearChatCache(user.id);
     setToken(null);
     setClaimedDocuments(0);
     setSessionExpired(false);
     setUser(null);
-  }, []);
+  }, [user]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,

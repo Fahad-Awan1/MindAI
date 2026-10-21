@@ -13,6 +13,7 @@ import { useAuth, initials } from '../auth/AuthContext';
 import { useBackHandler } from '../hooks/useBackHandler';
 import { Sparkles, Layers, Info, ArrowDown, Copy, Check, ListChecks, Lightbulb, HelpCircle, BookOpenText, FolderOpen, PanelLeft, SquarePen, X } from 'lucide-react';
 import { conversationsAPI, projectsAPI, studyGroupAPI, getErrorMessage, SendBody } from '../services/api';
+import { cachedChat, cachedChats, cachedProjects, forgetChat, saveChat, saveChats, saveProjects } from '../services/chatCache';
 
 const PERSONA_KEY = 'mindai.chatPersona';
 const HISTORY_HIDDEN_KEY = 'mindai.chatHistoryHidden';
@@ -87,12 +88,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
   const [conversation, setConversation] = useState<ConversationSummary | null>(null);
   // A new chat started inside a project
   const [newChatProjectId, setNewChatProjectId] = useState<string | null>(null);
-  const [chats, setChats] = useState<ConversationSummary[]>([]);
-  const [chatsLoading, setChatsLoading] = useState(true);
-  const [projects, setProjects] = useState<Project[]>([]);
+  // Shown instantly from the last visit, then refreshed from the server
+  const [chats, setChats] = useState<ConversationSummary[]>(() => (user ? cachedChats(user.id) ?? [] : []));
+  const [chatsLoading, setChatsLoading] = useState(() => !(user && cachedChats(user.id)));
+  const [projects, setProjects] = useState<Project[]>(() => (user ? cachedProjects(user.id) ?? [] : []));
   const [notice, setNotice] = useState<string | null>(null);
   // Projects live in the chat, like ChatGPT / Claude: a project's page opens in place of the conversation
   const [projectPageId, setProjectPageId] = useState<string | null>(null);
+  // A just-created project: its page is complete without waiting for the server
+  const [justCreated, setJustCreated] = useState<string | null>(null);
   const [creatingProject, setCreatingProject] = useState(false);
   // First message to send in a new project chat (handed over from the Projects screen)
   const pendingSendRef = useRef<string | null>(null);
@@ -113,7 +117,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
   };
 
   const loadChats = useCallback(() => {
-    setChatsLoading(true);
     conversationsAPI.list({ limit: 200 })
       .then(setChats)
       .catch(err => setNotice(`Couldn't load your chats: ${getErrorMessage(err, 'please try again.')}`))
@@ -126,8 +129,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
     loadChats();
     loadProjects();
   }, [loadChats, loadProjects]);
+  // Remember the lists for the next visit
+  useEffect(() => { if (user && !chatsLoading) saveChats(user.id, chats); }, [chats, chatsLoading, user]);
+  useEffect(() => { if (user) saveProjects(user.id, projects); }, [projects, user]);
 
   const openProject = (id: string) => {
+    setJustCreated(null);
     setProjectPageId(id);
     setHistoryOpen(false);
     setNotice(null);
@@ -171,9 +178,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
         : `Ready to discuss "${label}". Ask me for a summary, key points, or specific details!`,
   });
 
+  // The chat being opened (a slower, older load must not replace a newer choice)
+  const openingRef = useRef<string | null>(null);
+
   /** Start a fresh chat (about the selected document, all documents, or inside a project) */
   const startNewChat = (inProject: string | null = null, docId: string = selectedDocId) => {
     abortRef.current?.abort();
+    openingRef.current = null;
     setConversation(null);
     setNewChatProjectId(inProject);
     setProjectPageId(null);
@@ -186,27 +197,50 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
     setFocusKey(k => k + 1);
   };
 
-  /** Open a saved chat and its messages */
+  /** Open a saved chat and its messages (instantly when it was opened before, then refreshed) */
   const openChat = async (id: string) => {
     abortRef.current?.abort();
     setHistoryOpen(false);
     setProjectPageId(null);
     setNotice(null);
-    setIsHistoryLoading(true);
     isNearBottomRef.current = true;
-    try {
-      const detail = await conversationsAPI.get(id);
-      const { messages: saved, ...summary } = detail;
+    openingRef.current = id;
+    const show = (summary: ConversationSummary, saved: ChatMessage[]) => {
       setConversation(summary);
       setNewChatProjectId(null);
       setMessages(saved);
       if (summary.scope === 'document' && summary.document_id) setRawSelectedId(summary.document_id);
+    };
+    const cached = cachedChat(id);
+    const listed = chats.find(c => c.id === id);
+    if (cached) {
+      const { messages: saved, ...summary } = cached;
+      show(summary, saved);
+    } else if (listed) {
+      show(listed, []); // Title and context right away; the messages follow
+    }
+    setIsHistoryLoading(!cached);
+    try {
+      const detail = await conversationsAPI.get(id);
+      saveChat(detail);
+      // Still on this chat and not sending in it meanwhile: show the server's copy
+      if (openingRef.current === id && !abortRef.current) {
+        const { messages: saved, ...summary } = detail;
+        show(summary, saved);
+      }
     } catch (error) {
-      setNotice(`Couldn't open that chat: ${getErrorMessage(error, 'please try again.')}`);
+      if (openingRef.current === id && !cached) setNotice(`Couldn't open that chat: ${getErrorMessage(error, 'please try again.')}`);
     } finally {
-      setIsHistoryLoading(false);
+      if (openingRef.current === id) setIsHistoryLoading(false);
     }
   };
+
+  // Keep the open chat's latest messages for an instant reopen
+  useEffect(() => {
+    if (conversation && !streamingId && !isHistoryLoading) {
+      saveChat({ ...conversation, messages: messages.filter(m => !isLocalMessage(m)) });
+    }
+  }, [messages, conversation, streamingId, isHistoryLoading]);
 
   // Where to start: a chat or project picked elsewhere, otherwise a new chat about the selected document
   const handledTarget = useRef<number | null | undefined>(undefined);
@@ -274,6 +308,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
   const deleteChat = async (chat: ConversationSummary) => {
     try {
       await conversationsAPI.delete(chat.id);
+      forgetChat(chat.id);
       setChats(prev => prev.filter(c => c.id !== chat.id));
       if (conversation?.id === chat.id) startNewChat(null);
     } catch (error) {
@@ -531,6 +566,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
                 if (wasOpen) startNewChat(null);
               }}
               onUpload={onUpload}
+              initial={(() => {
+                const known = projects.find(p => p.id === projectPageId);
+                return known ? { ...known, documents: [], chats: chats.filter(c => c.project_id === projectPageId) } : null;
+              })()}
+              initialComplete={justCreated === projectPageId}
               onOpenChat={id => openChat(id)}
               onStartChat={(pid, message) => {
                 startNewChat(pid);
@@ -789,6 +829,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
           setCreatingProject(false);
           setProjects(prev => [created, ...prev]);
           openProject(created.id);
+          setJustCreated(created.id);
         }} />
       )}
 
