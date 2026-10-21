@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 
 import { Sidebar, VIEW_LABELS } from './components/Sidebar';
 import { DocumentList } from './components/DocumentList';
 import { ChatInterface } from './components/ChatInterface';
-import { Projects } from './components/projects/Projects';
 import { QuizGenerator } from './components/QuizGenerator';
 import { Flashcards } from './components/Flashcards';
 import { StudyPlanner } from './components/StudyPlanner';
@@ -91,9 +90,8 @@ const Workspace: React.FC = () => {
   const [readerFocus, setReaderFocus] = useState<ReaderFocus | null>(null);
   // Concept handed from the concept graph to chat or teach-back
   const [chatPrompt, setChatPrompt] = useState<string | null>(null);
-  // A saved chat to open, or a new chat to start in a project
+  // A saved chat to open in AI Chat (e.g. from the Reader's "Open in AI Chat")
   const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null);
-  const [projectToOpen, setProjectToOpen] = useState<string | null>(null);
   const [teachRequest, setTeachRequest] = useState<ConceptRequest | null>(null);
   // The screen actually rendered lags the selected one briefly so a curtain can sweep across first
   const [displayedView, setDisplayedView] = useState<AppView>(currentView);
@@ -206,15 +204,7 @@ const Workspace: React.FC = () => {
     return () => window.removeEventListener(OPEN_CHAT_EVENT, onOpen);
   }, []);
 
-  const startProjectChat = (projectId: string, message?: string) => {
-    setChatTarget({ key: Date.now(), projectId, message: message ?? null });
-    setCurrentView(AppView.CHAT);
-  };
 
-  const openProject = (projectId: string) => {
-    setProjectToOpen(projectId);
-    setCurrentView(AppView.PROJECTS);
-  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -292,18 +282,7 @@ const Workspace: React.FC = () => {
             onInitialInputConsumed={() => setChatPrompt(null)}
             target={chatTarget}
             onTargetConsumed={() => setChatTarget(null)}
-            onOpenProject={openProject}
-          />
-        );
-      case AppView.PROJECTS:
-        return (
-          <Projects
-            documents={documents}
             onUpload={handleUpload}
-            onOpenChat={openChat}
-            onStartChat={startProjectChat}
-            initialProjectId={projectToOpen}
-            onInitialProjectConsumed={() => setProjectToOpen(null)}
           />
         );
       case AppView.QUIZ:

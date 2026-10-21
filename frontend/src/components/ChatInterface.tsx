@@ -8,6 +8,7 @@ import { LogoMark } from './Logo';
 import { ChatComposer } from './chat/ChatComposer';
 import { ChatHistory } from './chat/ChatHistory';
 import { projectColor } from './projects/colors';
+import { ProjectForm, ProjectPage } from './projects/ProjectPage';
 import { useAuth, initials } from '../auth/AuthContext';
 import { useBackHandler } from '../hooks/useBackHandler';
 import { Sparkles, Layers, Info, ArrowDown, Copy, Check, ListChecks, Lightbulb, HelpCircle, BookOpenText, FolderOpen, PanelLeft, SquarePen, X } from 'lucide-react';
@@ -28,7 +29,8 @@ interface ChatInterfaceProps {
   /** Open a saved chat, or start one in a project (from the Projects screen) */
   target?: ChatTarget | null;
   onTargetConsumed?: () => void;
-  onOpenProject?: (projectId: string) => void;
+  /** Upload a file to the library (from a project page); resolves with the new document */
+  onUpload: (file: File) => Promise<DocumentFile | null>;
 }
 
 // Local-only messages (intro / errors) that are not part of the saved chat
@@ -48,7 +50,7 @@ const readHidden = () => {
   try { return window.localStorage.getItem(HISTORY_HIDDEN_KEY) === '1'; } catch { return false; }
 };
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initialDocId, onSelectDoc, onOpenInReader, initialInput, onInitialInputConsumed, target, onTargetConsumed, onOpenProject }) => {
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initialDocId, onSelectDoc, onOpenInReader, initialInput, onInitialInputConsumed, target, onTargetConsumed, onUpload }) => {
   const { user } = useAuth();
   const [focusKey, setFocusKey] = useState(0);
   // Who answers: MindAI (null) or one of the AI personalities
@@ -89,6 +91,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
   const [chatsLoading, setChatsLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  // Projects live in the chat, like ChatGPT / Claude: a project's page opens in place of the conversation
+  const [projectPageId, setProjectPageId] = useState<string | null>(null);
+  const [creatingProject, setCreatingProject] = useState(false);
   // First message to send in a new project chat (handed over from the Projects screen)
   const pendingSendRef = useRef<string | null>(null);
   // Phone: the history slides in as a drawer. Desktop: a column that can be hidden.
@@ -114,10 +119,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
       .catch(err => setNotice(`Couldn't load your chats: ${getErrorMessage(err, 'please try again.')}`))
       .finally(() => setChatsLoading(false));
   }, []);
+  const loadProjects = useCallback(() => {
+    projectsAPI.list().then(setProjects).catch(() => {});
+  }, []);
   useEffect(() => {
     loadChats();
-    projectsAPI.list().then(setProjects).catch(() => {});
-  }, [loadChats]);
+    loadProjects();
+  }, [loadChats, loadProjects]);
+
+  const openProject = (id: string) => {
+    setProjectPageId(id);
+    setHistoryOpen(false);
+    setNotice(null);
+  };
 
   /** Add a chat to the list or update it in place (and keep the newest first) */
   const upsertChat = (chat: Partial<ConversationSummary> & { id: string }) => {
@@ -162,6 +176,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
     abortRef.current?.abort();
     setConversation(null);
     setNewChatProjectId(inProject);
+    setProjectPageId(null);
     setNotice(null);
     setHistoryOpen(false);
     isNearBottomRef.current = true;
@@ -175,6 +190,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
   const openChat = async (id: string) => {
     abortRef.current?.abort();
     setHistoryOpen(false);
+    setProjectPageId(null);
     setNotice(null);
     setIsHistoryLoading(true);
     isNearBottomRef.current = true;
@@ -250,7 +266,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
   const moveChat = async (chat: ConversationSummary, toProject: string | null) => {
     try {
       upsertChat(await conversationsAPI.move(chat.id, toProject));
-      projectsAPI.list().then(setProjects).catch(() => {});
+      loadProjects();
     } catch (error) {
       setNotice(`Couldn't move the chat: ${getErrorMessage(error, 'please try again.')}`);
     }
@@ -441,7 +457,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
     <ChatHistory
       items={chats}
       loading={chatsLoading}
-      activeId={conversation?.id ?? null}
+      activeId={projectPageId ? null : conversation?.id ?? null}
       projects={projects}
       onOpen={chat => openChat(chat.id)}
       onNew={() => startNewChat(null)}
@@ -449,6 +465,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
       onTogglePin={togglePin}
       onMove={moveChat}
       onDelete={deleteChat}
+      activeProjectId={projectPageId ?? projectId}
+      onOpenProject={openProject}
+      onNewProject={() => { setHistoryOpen(false); setCreatingProject(true); }}
       onClose={onClose}
     />
   );
@@ -478,6 +497,49 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
       <div className={`mesh-blob w-[34rem] h-[34rem] -top-64 left-1/4 transition-colors duration-1000 ${isAllDocs ? 'bg-fuchsia-200/60' : 'bg-indigo-200/60'}`}></div>
       <div className={`mesh-blob w-[26rem] h-[26rem] bottom-0 -right-40 transition-colors duration-1000 ${isAllDocs ? 'bg-purple-200/50' : 'bg-sky-200/50'}`} style={{ animationDelay: '-9s' }}></div>
 
+      {projectPageId ? (
+        <>
+          <div className="z-20 px-3 md:px-6 py-3 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 flex items-center gap-2 shadow-sm flex-shrink-0">
+            <Tooltip content="Chat history" position="bottom">
+              <button type="button" onClick={toggleHistory} aria-label="Chat history" aria-expanded={historyOpen}
+                className="p-2 -ml-1 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 flex-shrink-0">
+                <PanelLeft className="w-5 h-5" />
+              </button>
+            </Tooltip>
+            <p className="flex-1 min-w-0 truncate text-sm font-semibold text-slate-500">
+              <FolderOpen className="inline w-4 h-4 mr-1.5 -mt-0.5" />Projects
+            </p>
+            <Tooltip content="New chat in this project" position="left">
+              <button type="button" onClick={() => startNewChat(projectPageId)} aria-label="New chat in this project"
+                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 flex-shrink-0">
+                <SquarePen className="w-5 h-5" />
+              </button>
+            </Tooltip>
+          </div>
+          <div className="relative z-10 flex-1 overflow-y-auto" data-lenis-prevent>
+            <ProjectPage
+              key={projectPageId}
+              projectId={projectPageId}
+              documents={documents}
+              onBack={() => setProjectPageId(null)}
+              onChanged={() => { loadProjects(); loadChats(); }}
+              onDeleted={() => {
+                const wasOpen = conversation?.project_id === projectPageId || newChatProjectId === projectPageId;
+                setProjectPageId(null);
+                loadProjects();
+                loadChats();
+                if (wasOpen) startNewChat(null);
+              }}
+              onUpload={onUpload}
+              onOpenChat={id => openChat(id)}
+              onStartChat={(pid, message) => {
+                startNewChat(pid);
+                if (message) pendingSendRef.current = message;
+              }}
+            />
+          </div>
+        </>
+      ) : (<>
       {/* Header: history toggle, chat title + what it answers from, context picker / new chat */}
       <div className="z-20 px-3 md:px-6 py-3 md:py-4 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 flex items-center gap-2 md:gap-3 shadow-sm flex-shrink-0 animate-slide-up">
         <Tooltip content="Chat history" position="bottom">
@@ -498,8 +560,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
           </h2>
           <div className="flex items-center gap-1.5 min-w-0 text-[11px] font-semibold text-slate-400">
             <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-            {isProject && projectId && onOpenProject ? (
-              <button type="button" onClick={() => onOpenProject(projectId)} className={`truncate hover:underline ${projectColor(project?.color).text}`}>
+            {isProject && projectId ? (
+              <button type="button" onClick={() => openProject(projectId)} className={`truncate hover:underline ${projectColor(project?.color).text}`}>
                 {contextLabel}
               </button>
             ) : (
@@ -718,6 +780,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ documents, initial
           />
         </div>
       </div>
+
+      </>)}
+
+      {creatingProject && (
+        <ProjectForm onCancel={() => setCreatingProject(false)} onSave={async values => {
+          const created = await projectsAPI.create(values);
+          setCreatingProject(false);
+          setProjects(prev => [created, ...prev]);
+          openProject(created.id);
+        }} />
+      )}
 
       {openSource && (
         <SourceDialog

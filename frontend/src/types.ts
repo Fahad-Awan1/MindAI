@@ -85,7 +85,6 @@ export enum AppView {
   AUDIO = 'AUDIO',
   GRAPH = 'GRAPH',
   ROOMS = 'ROOMS',
-  PROJECTS = 'PROJECTS',
   ABOUT = 'ABOUT',
   // (The separate AI Study Group screen was folded into AI Chat's personalities)
 }

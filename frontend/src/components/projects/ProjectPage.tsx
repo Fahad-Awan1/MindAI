@@ -1,21 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ArrowLeft, ArrowUp, Check, FileText, FolderOpen, FolderPlus, Loader2, MessageSquareText, Pencil, Plus, Trash2, Upload, X,
+  ArrowLeft, ArrowUp, Check, FileText, FolderOpen, Loader2, MessageSquareText, Pencil, Plus, Trash2, Upload, X,
 } from 'lucide-react';
 import { DocumentFile, Project, ProjectColor, ProjectDetail } from '../../types';
 import { getErrorMessage, projectsAPI } from '../../services/api';
 import { useBackHandler } from '../../hooks/useBackHandler';
 import { COLOR_NAMES, projectColor } from './colors';
 
-interface ProjectsProps {
+interface ProjectPageProps {
+  projectId: string;
   documents: DocumentFile[];
+  /** Leave the project page (back to the chat) */
+  onBack: () => void;
+  /** The project was edited (name, colour, documents...) */
+  onChanged: () => void;
+  onDeleted: () => void;
   /** Upload a file to the library; resolves with the new document (or null when it failed) */
   onUpload: (file: File) => Promise<DocumentFile | null>;
   onOpenChat: (conversationId: string) => void;
   /** Open a new chat in the project, optionally sending a first message */
   onStartChat: (projectId: string, message?: string) => void;
-  initialProjectId?: string | null;
-  onInitialProjectConsumed?: () => void;
 }
 
 const UPLOAD_ACCEPT = '.txt,.md,.pdf,.docx,.pptx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation';
@@ -35,7 +39,8 @@ const ago = (t: number) => {
 
 interface ProjectFormValues { name: string; description: string; instructions: string; color: ProjectColor }
 
-const ProjectForm: React.FC<{
+/** Create a project (no `initial`) or edit one */
+export const ProjectForm: React.FC<{
   initial?: Project;
   onCancel: () => void;
   onSave: (values: ProjectFormValues) => Promise<void>;
@@ -111,15 +116,10 @@ const ProjectForm: React.FC<{
   );
 };
 
-// --- One project -------------------------------------------------------------------------------------
+// --- One project (shown inside AI Chat) -------------------------------------------------------------
 
-const ProjectPage: React.FC<{
-  projectId: string;
-  documents: DocumentFile[];
-  onBack: () => void;
-  onChanged: () => void;
-  onDeleted: () => void;
-} & Pick<ProjectsProps, 'onUpload' | 'onOpenChat' | 'onStartChat'>> = ({ projectId, documents, onBack, onChanged, onDeleted, onUpload, onOpenChat, onStartChat }) => {
+/** A project's page: start a chat in it, its chats, its instructions for the AI and its documents */
+export const ProjectPage: React.FC<ProjectPageProps> = ({ projectId, documents, onBack, onChanged, onDeleted, onUpload, onOpenChat, onStartChat }) => {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -147,7 +147,7 @@ const ProjectPage: React.FC<{
   if (error) {
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-8">
-        <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-slate-500 mb-6"><ArrowLeft className="w-4 h-4" /> Projects</button>
+        <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-slate-500 mb-6"><ArrowLeft className="w-4 h-4" /> Back to chat</button>
         <p className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-rose-700">{error}</p>
       </div>
     );
@@ -179,8 +179,7 @@ const ProjectPage: React.FC<{
 
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 md:py-8 pb-28">
-      <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800 mb-5"><ArrowLeft className="w-4 h-4" /> All projects</button>
-
+      <p className="page-eyebrow text-slate-400 mb-3">Project</p>
       <header className="flex items-start gap-4 mb-6">
         <span className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br ${color.gradient} text-white flex items-center justify-center shadow-lg flex-shrink-0`}>
           <FolderOpen className="w-6 h-6" />
@@ -328,91 +327,6 @@ const ProjectPage: React.FC<{
           setEditing(false);
           await load();
           onChanged();
-        }} />
-      )}
-    </div>
-  );
-};
-
-// --- All projects ------------------------------------------------------------------------------------
-
-export const Projects: React.FC<ProjectsProps> = ({ documents, onUpload, onOpenChat, onStartChat, initialProjectId, onInitialProjectConsumed }) => {
-  const [projects, setProjects] = useState<Project[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(initialProjectId ?? null);
-
-  useEffect(() => {
-    if (initialProjectId) { setOpenId(initialProjectId); onInitialProjectConsumed?.(); }
-  }, [initialProjectId]);
-
-  const load = useCallback(() => {
-    projectsAPI.list()
-      .then(list => { setProjects(list); setError(null); })
-      .catch(err => setError(getErrorMessage(err, 'Could not load your projects.')));
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  if (openId) {
-    return (
-      <ProjectPage projectId={openId} documents={documents} onBack={() => { setOpenId(null); load(); }} onChanged={load}
-        onDeleted={() => { setOpenId(null); load(); }} onUpload={onUpload} onOpenChat={onOpenChat} onStartChat={onStartChat} />
-    );
-  }
-
-  return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-10 pb-28">
-      <div className="flex items-end justify-between gap-4 mb-8">
-        <div>
-          <p className="page-eyebrow text-indigo-600">Workspaces</p>
-          <h1 className="text-3xl md:text-4xl font-display font-bold text-slate-900">Projects</h1>
-          <p className="text-slate-500 mt-1 max-w-xl">Keep a course or exam in one place: its documents, instructions for MindAI, and all its chats.</p>
-        </div>
-        <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white font-bold shadow-lg hover:bg-slate-800 flex-shrink-0">
-          <FolderPlus className="w-5 h-5" /> <span className="hidden sm:inline">New project</span>
-        </button>
-      </div>
-
-      {error && <p role="alert" className="mb-6 rounded-xl bg-rose-50 border border-rose-200 p-4 text-rose-700">{error}</p>}
-
-      {projects === null && !error ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /></div>
-      ) : projects && projects.length === 0 ? (
-        <div className="text-center rounded-3xl border-2 border-dashed border-slate-200 bg-white/60 p-10 md:p-14">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-4"><FolderOpen className="w-8 h-8" /></div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">No projects yet</h2>
-          <p className="text-slate-500 max-w-md mx-auto mb-6">Create one for each course or exam. Add its notes, tell MindAI how to help, and every chat about it stays together.</p>
-          <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-900 text-white font-bold"><FolderPlus className="w-5 h-5" /> Create a project</button>
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
-          {projects?.map(p => {
-            const color = projectColor(p.color);
-            return (
-              <button key={p.id} onClick={() => setOpenId(p.id)}
-                className="group text-left rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-500 ease-out-expo overflow-hidden">
-                <div className={`h-1.5 bg-gradient-to-r ${color.gradient}`} />
-                <div className="p-5">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className={`w-9 h-9 rounded-xl ${color.soft} ${color.text} flex items-center justify-center flex-shrink-0`}><FolderOpen className="w-5 h-5" /></span>
-                    <h2 className="font-bold text-slate-900 truncate">{p.name}</h2>
-                  </div>
-                  <p className="text-sm text-slate-500 line-clamp-2 min-h-[2.5rem]">{p.description || p.instructions || 'No description'}</p>
-                  <p className="mt-3 text-xs font-semibold text-slate-400">
-                    {p.chat_count} chat{p.chat_count === 1 ? '' : 's'} · {p.document_count} document{p.document_count === 1 ? '' : 's'} · {ago(p.updated_at)}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {creating && (
-        <ProjectForm onCancel={() => setCreating(false)} onSave={async values => {
-          const project = await projectsAPI.create(values);
-          setCreating(false);
-          setOpenId(project.id);
         }} />
       )}
     </div>

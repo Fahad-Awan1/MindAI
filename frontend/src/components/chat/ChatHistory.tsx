@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, FolderInput, FolderMinus, Loader2, MoreHorizontal, Pencil, Pin, PinOff, Search, SquarePen, Trash2, X } from 'lucide-react';
+import { Check, ChevronRight, FolderInput, FolderMinus, FolderOpen, FolderPlus, Loader2, MoreHorizontal, Pencil, Pin, PinOff, Search, SquarePen, Trash2, X } from 'lucide-react';
 import { ConversationSummary, Project } from '../../types';
 import { conversationsAPI, getErrorMessage } from '../../services/api';
 import { useBackHandler } from '../../hooks/useBackHandler';
@@ -16,6 +16,10 @@ interface ChatHistoryProps {
   onTogglePin: (chat: ConversationSummary) => void;
   onMove: (chat: ConversationSummary, projectId: string | null) => void;
   onDelete: (chat: ConversationSummary) => void;
+  /** Projects: open one's page, or create one */
+  activeProjectId: string | null;
+  onOpenProject: (projectId: string) => void;
+  onNewProject: () => void;
   /** Phone drawer: a close button in the header */
   onClose?: () => void;
 }
@@ -48,7 +52,7 @@ const groupChats = (chats: ConversationSummary[]) => {
 const contextLabel = (chat: ConversationSummary) =>
   chat.project_name ? chat.project_name : chat.scope === 'all' ? 'All documents' : chat.document_title || 'Document';
 
-export const ChatHistory: React.FC<ChatHistoryProps> = ({ items, loading, activeId, projects, onOpen, onNew, onRename, onTogglePin, onMove, onDelete, onClose }) => {
+export const ChatHistory: React.FC<ChatHistoryProps> = ({ items, loading, activeId, projects, onOpen, onNew, onRename, onTogglePin, onMove, onDelete, activeProjectId, onOpenProject, onNewProject, onClose }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ConversationSummary[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -94,7 +98,18 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ items, loading, active
     return () => document.removeEventListener('pointerdown', onDown);
   }, [menuFor]);
 
-  const groups = useMemo(() => groupChats(items), [items]);
+  // Chats inside a project are listed under it (like ChatGPT / Claude), the rest by date
+  const groups = useMemo(() => groupChats(items.filter(c => !c.project_id)), [items]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // The project you're in stays open in the list
+  useEffect(() => {
+    if (activeProjectId) setExpanded(prev => (prev.has(activeProjectId) ? prev : new Set(prev).add(activeProjectId)));
+  }, [activeProjectId]);
+  const toggleProject = (id: string) => setExpanded(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const saveRename = async () => {
     if (!renaming) return;
@@ -104,7 +119,8 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ items, loading, active
     if (chat && title && title !== chat.title) await onRename(chat, title);
   };
 
-  const renderChat = (chat: ConversationSummary) => {
+  // Under a project the subtitle would only repeat the project's name, so it is left out there
+  const renderChat = (chat: ConversationSummary, inProject = false) => {
     const active = chat.id === activeId;
     const menuOpen = menuFor === chat.id;
     if (renaming?.id === chat.id) {
@@ -127,9 +143,11 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ items, loading, active
             {chat.pinned && <Pin className="w-3 h-3 flex-shrink-0 text-amber-500" aria-label="Pinned" />}
             <span className="block truncate text-sm font-medium">{chat.title}</span>
           </span>
-          <span className="block truncate text-[11px] text-slate-400 mt-0.5">
-            {chat.snippet ? chat.snippet : contextLabel(chat)}
-          </span>
+          {!(inProject && !chat.snippet) && (
+            <span className="block truncate text-[11px] text-slate-400 mt-0.5">
+              {chat.snippet ? chat.snippet : contextLabel(chat)}
+            </span>
+          )}
         </button>
         <button type="button" onClick={() => (menuOpen ? closeMenu() : (closeMenu(), setMenuFor(chat.id)))}
           aria-label={`Options for ${chat.title}`} aria-expanded={menuOpen} aria-haspopup="menu"
@@ -210,19 +228,60 @@ export const ChatHistory: React.FC<ChatHistoryProps> = ({ items, loading, active
           ) : results && results.length === 0 ? (
             <p className="px-3 py-4 text-sm text-slate-500">No chats match "{query.trim()}".</p>
           ) : (
-            <div className="space-y-0.5">{results?.map(renderChat)}</div>
+            <div className="space-y-0.5">{results?.map(chat => renderChat(chat))}</div>
           )
-        ) : loading && items.length === 0 ? (
-          <p className="flex items-center gap-2 px-3 py-4 text-sm text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading chats…</p>
-        ) : items.length === 0 ? (
-          <p className="px-3 py-6 text-sm text-slate-500 leading-relaxed">Your chats will appear here. Ask anything to start one.</p>
         ) : (
-          groups.map(group => (
-            <section key={group.label} className="mb-3">
-              <h3 className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{group.label}</h3>
-              <div className="space-y-0.5">{group.chats.map(renderChat)}</div>
+          <>
+            {/* Projects: each groups its own chats */}
+            <section className="mb-3">
+              <h3 className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Projects</h3>
+              <button type="button" onClick={onNewProject}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">
+                <FolderPlus className="w-4 h-4 text-slate-400" /> New project
+              </button>
+              {projects.map(project => {
+                const open = expanded.has(project.id);
+                const projectChats = items.filter(c => c.project_id === project.id).sort((a, b) => b.updated_at - a.updated_at);
+                const active = project.id === activeProjectId && !activeId;
+                return (
+                  <div key={project.id}>
+                    <div className={`flex items-center rounded-xl ${active ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-slate-100 text-slate-700'}`}>
+                      <button type="button" onClick={() => toggleProject(project.id)} aria-expanded={open}
+                        aria-label={`${open ? 'Hide' : 'Show'} chats in ${project.name}`}
+                        className="p-2 pl-2.5 text-slate-400 hover:text-slate-700">
+                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-90' : ''}`} />
+                      </button>
+                      <button type="button" onClick={() => onOpenProject(project.id)} aria-current={active ? 'page' : undefined}
+                        className="flex-1 min-w-0 flex items-center gap-2 py-2 pr-3 text-left">
+                        <FolderOpen className={`w-4 h-4 flex-shrink-0 ${projectColor(project.color).text}`} />
+                        <span className="truncate text-sm font-medium">{project.name}</span>
+                      </button>
+                    </div>
+                    {open && (
+                      <div className="ml-5 pl-2 border-l border-slate-200 space-y-0.5 mb-1">
+                        {projectChats.length ? projectChats.map(chat => renderChat(chat, true)) : (
+                          <p className="px-3 py-2 text-xs text-slate-400">No chats yet</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </section>
-          ))
+
+            {loading && items.length === 0 ? (
+              <p className="flex items-center gap-2 px-3 py-4 text-sm text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading chats…</p>
+            ) : groups.length === 0 ? (
+              <p className="px-3 py-4 text-sm text-slate-500 leading-relaxed">Your chats will appear here. Ask anything to start one.</p>
+            ) : (
+              groups.map(group => (
+                <section key={group.label} className="mb-3">
+                  <h3 className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{group.label}</h3>
+                  <div className="space-y-0.5">{group.chats.map(chat => renderChat(chat))}</div>
+                </section>
+              ))
+            )}
+          </>
         )}
       </div>
     </div>
