@@ -7,6 +7,7 @@ Without SMTP settings the email is printed to the console instead, so local deve
 import html
 import logging
 import smtplib
+import threading
 import time
 import uuid
 from email.message import EmailMessage
@@ -63,6 +64,26 @@ def _send_sync(to: str, subject: str, html_body: str, text_body: str) -> None:
 
 async def send_email(to: str, subject: str, html_body: str, text_body: str) -> None:
     await run_in_threadpool(_send_sync, to, subject, html_body, text_body)
+
+
+def send_email_in_background(to: str, subject: str, html_body: str, text_body: str) -> None:
+    """
+    Send without making the person wait: talking to Gmail (connect, TLS, login, send) takes ~2 s, which
+    signing up or asking for a reset code shouldn't sit through. The code arrives a moment later; a failure is
+    logged, and "Resend code" (which does wait, to report errors) is there if it never arrives.
+    Without SMTP (development, tests) the email is only written out, which is instant, so it stays in line.
+    """
+    if not email_configured():
+        _send_sync(to, subject, html_body, text_body)
+        return
+
+    def run():
+        try:
+            _send_sync(to, subject, html_body, text_body)
+        except EmailError:
+            pass  # Already logged with the reason
+
+    threading.Thread(target=run, name="send-email", daemon=True).start()
 
 
 # ---------------------------------------------------------------------------------------------

@@ -21,7 +21,7 @@ from services.auth_service import (
     verify_google_token,
     verify_password,
 )
-from services.email_service import EmailError, password_reset_email, send_email, verification_email
+from services.email_service import EmailError, password_reset_email, send_email, send_email_in_background, verification_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -132,12 +132,18 @@ async def send_verification(db: Session, user: User) -> None:
 
 
 async def send_verification_quietly(db: Session, user: User) -> None:
-    """Like send_verification, but a code sent moments ago (cooldown) is fine - that one still works."""
+    """
+    Sign-up / sign-in: email a code without waiting for Gmail (the code screen opens right away and the email
+    lands a moment later). A code sent moments ago (cooldown) is fine - that one still works.
+    """
     try:
-        await send_verification(db, user)
+        code = issue_code(db, user, "verify")
     except HTTPException as e:
         if e.status_code != 429:
             raise
+        return
+    subject, html_body, text_body = verification_email(user.name, code)
+    send_email_in_background(user.email, subject, html_body, text_body)
 
 
 def signed_in(db: Session, user: User) -> AuthResponse:
@@ -167,7 +173,7 @@ async def signup(request: SignupRequest, http_request: Request, db: Session = De
         raise HTTPException(status_code=409, detail="An account with this email already exists. Try signing in.")
 
     user = create_user(db, request.name, request.email, request.password)
-    await send_verification(db, user)
+    await send_verification_quietly(db, user)
     return needs_verification(user)
 
 
@@ -218,12 +224,11 @@ async def forgot_password(request: EmailRequest, http_request: Request, db: Sess
         try:
             code = issue_code(db, user, "reset")
             subject, html_body, text_body = password_reset_email(user.name, code)
-            await send_email(user.email, subject, html_body, text_body)
+            # Not waited for: faster, and the answer takes the same time whether or not the account exists
+            send_email_in_background(user.email, subject, html_body, text_body)
         except HTTPException as e:
             if e.status_code != 429:
                 raise
-        except EmailError as e:
-            raise HTTPException(status_code=502, detail=str(e))
     return {"message": "If an account exists for that email, we've sent a code to reset the password."}
 
 
