@@ -372,7 +372,11 @@ export interface RoomMessage {
   kind: 'user' | 'ai' | 'system' | 'quiz';
   text: string;
   sources: Source[] | null;
-  data: { leaderboard?: LeaderboardRow[]; questions?: number; persona?: string; challenge_id?: string; title?: string } | null;
+  data: {
+    leaderboard?: LeaderboardRow[]; questions?: number; persona?: string; challenge_id?: string; title?: string;
+    /** The shared document the message (or the AI's answer) is about */
+    document_id?: string; document_title?: string;
+  } | null;
   created_at: number;
   user: UserBrief | null;
 }

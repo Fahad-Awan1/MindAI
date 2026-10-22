@@ -176,8 +176,16 @@ def room_document_ids(db: Session, room_id: str) -> List[str]:
     return [doc_id for (doc_id,) in db.query(RoomDocument.document_id).filter(RoomDocument.room_id == room_id).all()]
 
 
+def shared_document(db: Session, room_id: str, document_id: Any) -> Optional[Document]:
+    """The document if it is shared in this room (anything else, e.g. one unshared meanwhile, is ignored)."""
+    if not isinstance(document_id, str) or not document_id:
+        return None
+    return (db.query(Document).join(RoomDocument, RoomDocument.document_id == Document.id)
+            .filter(RoomDocument.room_id == room_id, Document.id == document_id).first())
+
+
 def _ai_messages(room: Room, history: List[RoomMessage], question: str, asker: str, context: str,
-                 persona_id: Optional[str] = None) -> List[Dict]:
+                 persona_id: Optional[str] = None, focus_title: Optional[str] = None) -> List[Dict]:
     titles = ", ".join(rd.document.title for rd in room.documents if rd.document) or "none yet"
     identity = f'You are MindAI, the AI study moderator in a group study room called "{room.name}".'
     if persona_id:
@@ -192,6 +200,7 @@ If the context doesn't cover the question, say so briefly and answer from genera
 {CITATION_INSTRUCTION if context else ""}
 
 DOCUMENTS SHARED IN THIS ROOM: {titles}
+{f'THE QUESTION IS ABOUT ONE DOCUMENT: "{focus_title}". Answer from it (the context below comes only from it).' if focus_title else ''}
 
 CONTEXT FROM SHARED DOCUMENTS:
 {context or "(no documents shared yet)"}"""
@@ -207,15 +216,20 @@ CONTEXT FROM SHARED DOCUMENTS:
     return messages
 
 
-async def run_ai_answer(room_id: str, question: str, asker_name: str, persona_id: Optional[str] = None) -> None:
-    """Stream the moderator's answer to everyone in the room, then save it. One answer at a time per room."""
+async def run_ai_answer(room_id: str, question: str, asker_name: str, persona_id: Optional[str] = None,
+                        document_id: Optional[str] = None) -> None:
+    """
+    Stream the moderator's answer to everyone in the room, then save it. One answer at a time per room.
+    With `document_id` (the message was about one shared document) the answer comes from that document only.
+    """
     async with _ai_locks[room_id]:
         db = SessionLocal()
         try:
             room = db.query(Room).filter(Room.id == room_id).first()
             if room is None:
                 return
-            doc_ids = room_document_ids(db, room_id)
+            focus = shared_document(db, room_id, document_id)
+            doc_ids = [focus.id] if focus else room_document_ids(db, room_id)
             sources = await run_in_threadpool(rag_service.get_sources, question, doc_ids) if doc_ids else []
             history = (
                 db.query(RoomMessage)
@@ -224,10 +238,12 @@ async def run_ai_answer(room_id: str, question: str, asker_name: str, persona_id
                 .limit(HISTORY_FOR_AI + 1)
                 .all()
             )[::-1][:-1]  # The newest message is the question itself
-            messages = _ai_messages(room, history, question, asker_name, format_sources(sources, include_titles=True), persona_id)
+            messages = _ai_messages(room, history, question, asker_name, format_sources(sources, include_titles=True), persona_id,
+                                    focus.title if focus else None)
 
             stream_id = uuid.uuid4().hex
-            await manager.broadcast(room_id, {"type": "ai_start", "stream_id": stream_id, "sources": sources, "persona": persona_id})
+            await manager.broadcast(room_id, {"type": "ai_start", "stream_id": stream_id, "sources": sources, "persona": persona_id,
+                                              "document": {"id": focus.id, "title": focus.title} if focus else None})
             parts: List[str] = []
             try:
                 async for piece in stream_completion(messages, 0.6, 1500):
@@ -237,8 +253,12 @@ async def run_ai_answer(room_id: str, question: str, asker_name: str, persona_id
             except AIServiceError as e:
                 text = f"Sorry, I couldn't answer just now: {e}"
                 sources = []
-            message = add_message(db, room_id, text, kind="ai", sources=sources or None,
-                                  data={"persona": persona_id} if persona_id else None)
+            data: Dict[str, Any] = {}
+            if persona_id:
+                data["persona"] = persona_id
+            if focus:
+                data.update(document_id=focus.id, document_title=focus.title)
+            message = add_message(db, room_id, text, kind="ai", sources=sources or None, data=data or None)
             await manager.broadcast(room_id, {"type": "ai_done", "stream_id": stream_id, "message": message_out(message)})
         finally:
             db.close()

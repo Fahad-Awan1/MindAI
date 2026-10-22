@@ -23,6 +23,7 @@ from services.room_service import (
     message_out,
     now_ms,
     run_ai_answer,
+    shared_document,
     start_battle,
     user_brief,
 )
@@ -354,7 +355,8 @@ def _int(value, default: int) -> int:
 async def room_socket(websocket: WebSocket, room_id: str, token: str = ""):
     """
     Client -> server events:
-      {"type": "message", "text": "...", "ask_ai": bool}   (or mention @MindAI)
+      {"type": "message", "text": "...", "ask_ai": bool, "document_id": "..."}   (or mention @MindAI;
+          document_id: the shared document the message is about - the AI then answers from it alone)
       {"type": "typing"}
       {"type": "quiz_start", "count": 5}   {"type": "quiz_answer", "index": 0, "option": 2}   {"type": "quiz_cancel"}
     Server -> client events: hello, presence, message, typing, ai_start/ai_delta/ai_done,
@@ -406,8 +408,12 @@ async def room_socket(websocket: WebSocket, room_id: str, token: str = ""):
                 try:
                     if get_membership(db, room_id, user_id) is None:  # Removed meanwhile
                         break
-                    message = add_message(db, room_id, text, kind="user", user_id=user_id)
+                    # The document the message is about (picked in "Talking about"), if it is shared in this room
+                    about = shared_document(db, room_id, event.get("document_id"))
+                    message = add_message(db, room_id, text, kind="user", user_id=user_id,
+                                          data={"document_id": about.id, "document_title": about.title} if about else None)
                     payload = message_out(message)
+                    about_id = about.id if about else None
                 finally:
                     db.close()
                 await manager.broadcast(room_id, {"type": "message", "message": payload})
@@ -418,9 +424,9 @@ async def room_socket(websocket: WebSocket, room_id: str, token: str = ""):
                 personas = list(dict.fromkeys(personas))[:2]
                 question = PERSONA_MENTION.sub("", AI_MENTION.sub("", text)).strip() or text
                 for persona_id in personas:
-                    asyncio.create_task(run_ai_answer(room_id, question, user_name, persona_id))
+                    asyncio.create_task(run_ai_answer(room_id, question, user_name, persona_id, document_id=about_id))
                 if not personas and (event.get("ask_ai") or AI_MENTION.search(text)):
-                    asyncio.create_task(run_ai_answer(room_id, question, user_name))
+                    asyncio.create_task(run_ai_answer(room_id, question, user_name, document_id=about_id))
 
             elif kind == "quiz_start":
                 count = min(max(_int(event.get("count"), 5), 3), 10)

@@ -12,7 +12,7 @@ export type RoomSocketEvent =
   | { type: 'presence'; online: string[] }
   | { type: 'message'; message: RoomMessage }
   | { type: 'typing'; user: UserBrief }
-  | { type: 'ai_start'; stream_id: string; sources?: Source[]; persona?: string | null }
+  | { type: 'ai_start'; stream_id: string; sources?: Source[]; persona?: string | null; document?: { id: string; title: string } | null }
   | { type: 'ai_delta'; stream_id: string; text: string }
   | { type: 'ai_done'; stream_id: string; message: RoomMessage }
   | { type: 'room_updated' }

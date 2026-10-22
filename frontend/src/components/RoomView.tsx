@@ -29,7 +29,20 @@ interface AiStream {
   text: string;
   sources: Source[];
   persona: string | null;
+  /** The shared document the answer is about */
+  documentTitle?: string | null;
 }
+
+// "About": the shared document this person's messages are about, remembered per room
+// A document name short enough for the message box's hint ("Photosynthesis and Cellular…")
+const shortTitle = (title: string) => {
+  const plain = title.replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_]+/g, ' ').trim();
+  return plain.length > 30 ? `${plain.slice(0, 29).trimEnd()}…` : plain;
+};
+const aboutKey = (roomId: string) => `mindai.roomFocus.${roomId}`;
+const readAbout = (roomId: string): string | null => {
+  try { return window.localStorage.getItem(aboutKey(roomId)); } catch { return null; }
+};
 
 const TYPING_SHOWN_MS = 3500;
 const TYPING_SEND_EVERY_MS = 2500;
@@ -94,6 +107,12 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   const [input, setInput] = useState('');
   // Who answers the next message: 'mindai', an AI classmate's id, or nobody
   const [askTarget, setAskTarget] = useState<string | null>(null);
+  // The shared document my messages are about (null = the whole room / all shared documents)
+  const [aboutId, setAboutId] = useState<string | null>(() => readAbout(roomId));
+  const chooseAbout = (id: string | null) => {
+    setAboutId(id);
+    try { if (id) window.localStorage.setItem(aboutKey(roomId), id); else window.localStorage.removeItem(aboutKey(roomId)); } catch { /* ignore */ }
+  };
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [removedReason, setRemovedReason] = useState<string | null>(null);
@@ -213,7 +232,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
         setTyping(prev => ({ ...prev, [event.user.id]: { name: event.user.name, until: Date.now() + TYPING_SHOWN_MS } }));
         break;
       case 'ai_start':
-        setAiStream({ streamId: event.stream_id, text: '', sources: event.sources || [], persona: event.persona ?? null });
+        setAiStream({ streamId: event.stream_id, text: '', sources: event.sources || [], persona: event.persona ?? null, documentTitle: event.document?.title ?? null });
         break;
       case 'ai_delta':
         setAiStream(prev => (prev && prev.streamId === event.stream_id ? { ...prev, text: prev.text + event.text } : prev));
@@ -319,7 +338,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   const handleSend = (text: string) => {
     if (!text) return;
     const persona = askTarget && askTarget !== 'mindai' ? askTarget : undefined;
-    if (!send({ type: 'message', text, ask_ai: askTarget === 'mindai', persona })) {
+    if (!send({ type: 'message', text, ask_ai: askTarget === 'mindai', persona, document_id: aboutDoc?.document_id })) {
       showToast('Reconnecting... your message was not sent.');
       return;
     }
@@ -371,6 +390,24 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   }
 
   const typingNames = Object.entries(typing).filter(([id]) => id !== me.id).map(([, v]) => v.name);
+  // A choice of a document that was unshared meanwhile falls back to the whole room
+  const aboutDoc = detail?.documents.find(d => d.document_id === aboutId) ?? null;
+
+  /** Small label on a message saying which shared document it is about; tap it to talk about that document too */
+  const aboutChip = (m: RoomMessage) => {
+    const title = m.data?.document_title;
+    if (!title) return null;
+    const stillShared = detail?.documents.some(d => d.document_id === m.data?.document_id);
+    const on = aboutDoc?.document_id === m.data?.document_id;
+    return (
+      <button type="button" disabled={!stillShared || on}
+        onClick={e => { e.stopPropagation(); chooseAbout(m.data!.document_id!); showToast(`Now talking about ${title}`); setFocusKey(k => k + 1); }}
+        title={on ? 'You are talking about this document' : stillShared ? 'Talk about this document too' : 'No longer shared in this room'}
+        className="inline-flex items-center gap-1 max-w-full mb-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors disabled:cursor-default disabled:hover:bg-indigo-50">
+        <FileText className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{title}</span>
+      </button>
+    );
+  };
   const unsharedDocs = myDocuments.filter(d => !detail?.documents.some(s => s.document_id === d.id));
   const members = (detail?.members ?? []).map(m => ({ ...m, online: online.has(m.id) }));
   const onlineCount = members.filter(m => m.online).length;
@@ -441,8 +478,9 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
   const renderBody = (m: RoomMessage, continued: boolean) => {
     if (m.kind === 'system') {
       return (
-        <div className="flex justify-center msg-in">
-          <span className="text-xs text-slate-500 bg-white/80 backdrop-blur border border-slate-100 rounded-full px-3.5 py-1 shadow-sm">{m.text}</span>
+        <div className="flex justify-center msg-in min-w-0">
+          {/* Long file names have no spaces to wrap at: let them break anywhere instead of running off screen */}
+          <span className="max-w-full text-center text-xs text-slate-500 bg-white/80 backdrop-blur border border-slate-100 rounded-2xl px-3.5 py-1 shadow-sm [overflow-wrap:anywhere]">{m.text}</span>
         </div>
       );
     }
@@ -500,6 +538,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               <span className="font-normal text-slate-400">{time(m.created_at)}</span>
             </p>
             <div className="bg-white/95 backdrop-blur border border-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm hover:shadow-md transition-shadow duration-300" style={{ borderLeft: `3px solid ${color}` }}>
+              {aboutChip(m)}
               <MarkdownMessage text={m.text} sources={m.sources} onCite={setOpenSource} />
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
@@ -529,6 +568,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               <span className="font-normal text-slate-400">{time(m.created_at)}</span>
             </p>
           )}
+          {aboutChip(m)}
           <div className="relative group/msg max-w-full min-w-0" onClick={() => setActiveMsgId(id => (id === m.id ? null : m.id))}>
             {messageActions(m, mine ? null : handle, mine)}
             <p
@@ -773,6 +813,11 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
                 <div className="flex gap-3 msg-in pt-1">
                   <AiAvatar persona={persona} />
                   <div className="min-w-0 max-w-[85%] bg-white/95 border border-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm" style={{ borderLeft: `3px solid ${color}` }}>
+                    {aiStream.documentTitle && (
+                      <span className="inline-flex items-center gap-1 max-w-full mb-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700">
+                        <FileText className="w-3 h-3 flex-shrink-0" /> <span className="truncate">{aiStream.documentTitle}</span>
+                      </span>
+                    )}
                     {aiStream.text
                       ? <div className="streaming-cursor"><MarkdownMessage text={aiStream.text} sources={aiStream.sources} onCite={setOpenSource} /></div>
                       : <span className="text-sm text-slate-400 flex items-center gap-2.5"><span className="typing-dots" style={{ color }}><span></span><span></span><span></span></span> {persona?.name ?? 'MindAI'} is thinking...</span>}
@@ -809,9 +854,20 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
               mentions={mentionCandidates}
               focusKey={focusKey || undefined}
               placeholder={askTarget
-                ? `Ask ${askTarget === 'mindai' ? 'MindAI' : personas.find(p => p.id === askTarget)?.name ?? 'the AI'} something...`
-                : 'Message the room · type @ to mention someone'}
+                ? `Ask ${askTarget === 'mindai' ? 'MindAI' : personas.find(p => p.id === askTarget)?.name ?? 'the AI'} about ${aboutDoc ? shortTitle(aboutDoc.title) : 'the shared documents'}`
+                : aboutDoc ? `Message about ${shortTitle(aboutDoc.title)} · @ to mention` : 'Message the room · type @ to mention someone'}
               above={
+                <>
+                {detail && detail.documents.length > 0 && (
+                  <label className="flex items-center gap-1.5 mb-2 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 flex items-center gap-1 flex-shrink-0"><FileText className="w-3 h-3" /> About</span>
+                    <select value={aboutDoc?.document_id ?? ''} onChange={e => chooseAbout(e.target.value || null)} aria-label="Document your messages are about"
+                      className={`min-w-0 flex-1 sm:flex-none sm:max-w-xs truncate rounded-full border py-1 pl-3 pr-8 text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 ${aboutDoc ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white/80 text-slate-600'}`}>
+                      <option value="">All shared documents</option>
+                      {detail.documents.map(d => <option key={d.document_id} value={d.document_id}>{d.title}</option>)}
+                    </select>
+                  </label>
+                )}
                 <div className="flex items-center gap-1.5 mb-2 overflow-x-auto no-scrollbar">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 mr-1 flex items-center gap-1 flex-shrink-0"><Sparkles className="w-3 h-3" /> Ask</span>
                   {[{ id: 'mindai', name: 'MindAI', color: '#6366f1' }, ...personas].map(p => {
@@ -833,6 +889,7 @@ export const RoomView: React.FC<RoomViewProps> = ({ roomId, myDocuments, onBack,
                     );
                   })}
                 </div>
+                </>
               }
             />
           </div>
