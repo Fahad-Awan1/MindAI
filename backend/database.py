@@ -6,12 +6,28 @@ settings = get_settings()
 
 database_url = settings.resolved_database_url
 
-engine = create_engine(
-    database_url,
-    connect_args={"check_same_thread": False} if database_url.startswith("sqlite") else {}
-)
+if database_url.startswith("sqlite"):
+    engine = create_engine(database_url, connect_args={"check_same_thread": False})
+else:
+    # Hosted PostgreSQL (Neon): it closes idle connections and may sleep, so test a pooled connection
+    # before using it and recycle old ones instead of failing the request
+    engine = create_engine(database_url, pool_pre_ping=True, pool_recycle=300, pool_size=5, max_overflow=5)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+if not database_url.startswith("sqlite"):
+    from sqlalchemy import String, event
+    from sqlalchemy.orm import Session
+
+    @event.listens_for(Session, "before_flush")
+    def _strip_nul_characters(session, flush_context, instances):
+        """PostgreSQL text can't hold the NUL character, which text extracted from some PDFs contains."""
+        for obj in list(session.new) + list(session.dirty):
+            for column in obj.__table__.columns:
+                if isinstance(column.type, String):  # Text is a String too
+                    value = getattr(obj, column.key, None)
+                    if isinstance(value, str) and "\x00" in value:
+                        setattr(obj, column.key, value.replace("\x00", ""))
 
 Base = declarative_base()
 
@@ -49,7 +65,7 @@ _ADDED_COLUMNS = [
     ("study_sets", "user_id", "VARCHAR"),
     ("study_activities", "user_id", "VARCHAR"),
     # Email verification: accounts that existed before it count as verified (DEFAULT 1 fills existing rows)
-    ("users", "email_verified", "BOOLEAN NOT NULL DEFAULT 1"),
+    ("users", "email_verified", "BOOLEAN NOT NULL DEFAULT TRUE"),
     ("users", "google_sub", "VARCHAR"),
     ("users", "token_version", "INTEGER NOT NULL DEFAULT 0"),
     # Chat history: each message belongs to a conversation (older messages are grouped into chats on first use)

@@ -11,7 +11,8 @@ from config import get_settings, BASE_DIR
 from database import get_db
 from models import StudySet, User
 from schemas import StudySetResponse
-from services.document_service import resolve_stored_path, delete_file
+from services import file_store
+from services.document_service import resolve_stored_path, delete_file, load_binary_file
 from services.groq_service import AIServiceError, generate_podcast_script
 from services.auth_service import get_current_user, get_user_document
 from services.study_service import create_study_set, to_response
@@ -63,6 +64,7 @@ async def render_overview_audio(db: Session, study_set: StudySet) -> bool:
     os.makedirs(os.path.dirname(absolute), exist_ok=True)
     with open(absolute, "wb") as f:
         f.write(audio)
+    file_store.save(stored, audio)  # Kept in the database too (cloud disks are wiped on restart)
     data["audio"] = {"file": stored, "durations": [round(d, 3) for d in durations]}
     study_set.data = json.dumps(data)
     db.commit()
@@ -116,6 +118,8 @@ def get_overview_audio(set_id: str, user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=404, detail="Audio overview not found")
     audio = json.loads(study_set.data).get("audio") or {}
     path = resolve_stored_path(audio["file"]) if audio.get("file") else None
+    if path and not os.path.exists(path):
+        load_binary_file(audio["file"])  # Brings it back from the database copy after a restart
     if not path or not os.path.exists(path):
         raise HTTPException(status_code=404, detail="No audio has been rendered for this overview")
     return FileResponse(path, media_type="audio/wav", filename=f"{set_id}.wav")

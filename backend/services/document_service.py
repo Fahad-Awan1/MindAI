@@ -8,6 +8,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from io import BytesIO
 from config import get_settings, BASE_DIR, resolve_path
+from services import file_store
 
 settings = get_settings()
 
@@ -135,24 +136,39 @@ def save_binary_file(file_content: bytes, file_type: str) -> str:
     with open(abs_path, 'wb') as f:
         f.write(file_content)
 
+    stored = abs_path
     try:
         rel = os.path.relpath(abs_path, BASE_DIR)
         if not rel.startswith(".."):
-            return "./" + rel.replace(os.sep, "/")
+            stored = "./" + rel.replace(os.sep, "/")
     except ValueError:
         # Different drive on Windows - fall back to absolute path
         pass
-    return abs_path
+    # Also in the database: the disk may be wiped when the server restarts (cloud hosting)
+    file_store.save(stored, file_content)
+    return stored
 
 
 def load_binary_file(file_path: str) -> Optional[bytes]:
-    """Load binary file from disk."""
+    """Load a stored file: from disk, or from the database copy (written back to disk) when the disk lost it."""
+    absolute = resolve_stored_path(file_path)
     try:
-        with open(resolve_stored_path(file_path), 'rb') as f:
+        with open(absolute, 'rb') as f:
             return f.read()
+    except FileNotFoundError:
+        pass
     except Exception as e:
         print(f"Error loading file: {e}")
         return None
+    data = file_store.load(file_path)
+    if data is not None:
+        try:
+            os.makedirs(os.path.dirname(absolute), exist_ok=True)
+            with open(absolute, 'wb') as f:
+                f.write(data)
+        except OSError as e:
+            print(f"Could not restore {file_path} to disk: {e}")
+    return data
 
 
 def get_file_base64(file_path: str) -> Optional[str]:
@@ -164,13 +180,17 @@ def get_file_base64(file_path: str) -> Optional[str]:
 
 
 def delete_file(file_path: str):
-    """Delete file from disk."""
+    """Delete a stored file (disk and database copy)."""
     try:
         abs_path = resolve_stored_path(file_path)
         if os.path.exists(abs_path):
             os.remove(abs_path)
     except Exception as e:
         print(f"Error deleting file: {e}")
+    try:
+        file_store.delete(file_path)
+    except Exception as e:
+        print(f"Error deleting stored copy of {file_path}: {e}")
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, BigInteger, Boolean, Float
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, BigInteger, Boolean, Float, LargeBinary
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -487,3 +487,17 @@ class Conversation(Base):
     project = relationship("Project", back_populates="conversations")
     messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan",
                             order_by="ChatMessage.timestamp")
+
+
+class StoredFile(Base):
+    """
+    A copy of an uploaded file (PDF/DOCX/PPTX) or a rendered audio overview, keyed by its stored path.
+
+    Hosts like Hugging Face Spaces wipe the disk on every restart; the database keeps the file, and it is
+    written back to disk the first time it is needed again (see services/file_store.py).
+    """
+    __tablename__ = "stored_files"
+
+    path = Column(String, primary_key=True)
+    data = Column(LargeBinary, nullable=False)
+    created_at = Column(BigInteger, nullable=False)
